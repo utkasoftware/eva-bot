@@ -1,0 +1,8 @@
+coloredlogs==15.0.1
+cryptg==0.2.post4
+httpx==0.21.1
+captcha==0.4
+MarkupSafe==2.0.1
+newthon==1.26.4
+psycopg2==2.9.2
+# telethon==1.24.0
