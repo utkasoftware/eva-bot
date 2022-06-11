@@ -4,4 +4,4 @@
 
 from .captcha import CaptchaWrapper
 from .database import DatabaseWrapper
-from .spamwatch import SW
+from .spamwatch import SpamwatchWrapper
