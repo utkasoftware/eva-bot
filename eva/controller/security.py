@@ -110,7 +110,8 @@ class BotSecurity:
                 nonlocal anonymous # temp fix
                 if utils.is_private(data) and anonymous:
                     anonymous = False
-
+                if not utils.is_anon(data) and anonymous:
+                    anonymous = False
                 """ Ignoring other bots commands """
                 if not utils.is_my_cmd(data.message, this.bot_username):
                     return False
