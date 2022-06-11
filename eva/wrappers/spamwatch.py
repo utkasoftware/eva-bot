@@ -7,7 +7,7 @@ from httpx import AsyncClient, codes, TimeoutException
 from ..configs import BotConfig
 
 
-class SW:
+class SpamwatchWrapper:
 
     def __init__(this, token: str = BotConfig().get_spamwatch_token()):
 
@@ -36,7 +36,7 @@ class SW:
 if __name__ == '__main__':
     import asyncio
     token = input('SW Token: ')
-    sw = SW(token)
+    sw = SpamwatchWrapper(token)
     loop = asyncio.new_event_loop()
     while True:
         user_id = int(input('User Id: '))
