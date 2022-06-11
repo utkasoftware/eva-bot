@@ -15,6 +15,7 @@ from httpx import get as httpx_get
 
 
 class BotConfig:
+
     def __init__(this) -> None:
 
         this.postgresql_url = environ.get("DATABASE_URL")
@@ -27,15 +28,12 @@ class BotConfig:
             )
 
         if not this.config.has_section("database") and not this.postgresql_url:
-            raise Exception(
-                'Database params not found: \
-Missing "DATABASE_URL" env var or "config.ini" file'
-            )
+            raise Exception('Database params not found: \
+Missing "DATABASE_URL" env var or "config.ini" file')
 
         coloredlogs.install()
-        logging.basicConfig(
-            level=logging.INFO, format="%(asctime)s - %(message)s"
-        )
+        logging.basicConfig(level=logging.INFO,
+                            format="%(asctime)s - %(message)s")
 
     def get_connect_params(this) -> list[str]:
 
@@ -57,17 +55,14 @@ Missing "DATABASE_URL" env var or "config.ini" file'
 
     def get_bot_token(this) -> str:
 
-        return (
-            this.config.get("bot", "token")
-            if not this.bot_token
-            else this.bot_token
-        )
+        return (this.config.get("bot", "token")
+                if not this.bot_token else this.bot_token)
 
     def get_bot_username(this) -> str:
 
         _api_response = httpx_get(
-            "https://api.telegram.org/bot{}/getMe".format(this.get_bot_token())
-        )
+            "https://api.telegram.org/bot{}/getMe".format(
+                this.get_bot_token()))
         return _api_response.json().get("result").get("username")
 
     def get_bot_id(this) -> int:
@@ -95,3 +90,7 @@ Missing "DATABASE_URL" env var or "config.ini" file'
         height: int = this.config.getint("captcha", "height")
 
         return [length, width, height]
+
+    def get_spamwatch_token(this) -> str:
+
+        return this.config.get("spamwatch", "token")
