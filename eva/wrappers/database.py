@@ -61,6 +61,7 @@ class DatabaseWrapper:
                 name CHAR(64),
                 is_mega BOOLEAN,
                 last_act TIMESTAMP,
+                log_channel BIGINT,
                 first_add TIMESTAMP,
                 stopped BOOLEAN NOT NULL DEFAULT FALSE,
                 blocked BOOLEAN NOT NULL DEFAULT FALSE,
@@ -268,6 +269,43 @@ class DatabaseWrapper:
         if data.chat.id != data.sender.id:
             logged_ = "chatid::{}".format(data.chat.id) + logged_
         print(logged_)
+
+    async def set_log_channel(this, chat_id: int, channel_id: int) -> None:
+
+        cur = this.con.cursor()
+        cur.execute(
+            """
+            UPDATE
+                chats_stats
+            SET
+                log_channel = %(chid)s
+            WHERE
+                chat_id = %(cid)s
+            """,
+            {"chid": channel_id, "cid": chat_id},
+        )
+
+        this.con.commit()
+
+    async def get_log_channel(this, chat_id: int) -> int | None:
+
+        cur = this.con.cursor()
+        cur.execute(
+            """
+            SELECT
+                log_channel
+            FROM
+                chats_stats
+            WHERE
+                chat_id = %(cid)s
+            """,
+            {"cid": chat_id},
+        )
+        row = cur.fetchone()
+        if not row:
+            return
+        channel_id = row[0]
+        return channel_id
 
     async def set_user_state(this, user_id: int, state_id: int) -> None:
 

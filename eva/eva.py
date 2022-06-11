@@ -15,6 +15,8 @@ from telethon.tl.functions.channels import GetChannelsRequest
 from telethon.tl.functions.messages import HideChatJoinRequestRequest  # type: ignore
 from telethon.tl.functions.messages import GetChatsRequest
 from telethon.errors.rpcerrorlist import ChannelPrivateError
+from telethon.errors.rpcerrorlist import ChatAdminRequiredError
+from telethon.errors.rpcerrorlist import ChatIdInvalidError
 
 from . import utils
 from .controller import BotSecurity, UserStatesControl
@@ -38,8 +40,9 @@ captcha_settings = BotConfig.get_captcha_settings()
 api_id, api_hash = BotConfig.get_api_params()
 BOT_TOKEN = BotConfig.get_bot_token()
 
-bot = TelegramClient("mainbot", api_id, api_hash,
-                     flood_sleep_threshold=30).start(bot_token=BOT_TOKEN)
+bot = TelegramClient("mainbot", api_id, api_hash, flood_sleep_threshold=30).start(
+    bot_token=BOT_TOKEN
+)
 del BOT_TOKEN
 bot.parse_mode = "html"
 
@@ -49,14 +52,110 @@ print("Admin ID: {}".format(BotConfig.get_owner_id()))
 
 
 @bot.on(events.NewMessage(incoming=True, forwards=False))
-async def bot_main(event: Message) -> None:
+async def all_handler(event: Message) -> None:
     """
-    Сбор данных пользователей.
+    Сбор данных пользователей и хендлер для ответов на капчу
+    @todo перенести всё в обработчик заявок под telethon.conversation
     Держать обязательно в самом начале хендлеров.
     """
 
     if not utils.is_channel(event):
         await BotDB.save_user(event)
+
+    if utils.is_private(event) and not event.message.text.startswith("/"):
+
+        user_state = await Usc.get(event.sender.id)
+
+        if user_state == States.FEEDBACK_WAIT_FOR_ANSWER:
+
+            await bot.forward_messages(BotSecurity.owner_id, event.message)
+            await event.respond(LL.feedback_thanks)
+            await Usc.update(event.chat.id, States.START)
+            return
+
+        if user_state == States.WAIT_FOR_ANSWER:
+
+            answer = event.message.text
+
+            if len(answer) > 32:
+                await bot.send_message(event.sender.id, LL.max_symbols_error)
+                return
+
+            for char in answer:
+                if char.isalpha() or char.isnumeric():
+                    continue
+                else:
+                    await bot.send_message(event.sender.id, LL.incorrect_answer)
+                    return
+
+            captcha: Captcha = await BotDB.solve_captcha(
+                user_id=event.sender.id, text=answer
+            )
+
+            if captcha.found:
+
+                if captcha.expired:
+                    await bot.send_message(
+                        event.sender.id,
+                        LL.captcha_code_expired,
+                    )
+                    new_captcha = await CaptchaWrapper().generate(*captcha_settings)
+                    await BotDB.refresh_captcha(
+                        user_id=event.sender.id,
+                        expired_text=captcha.text,
+                        new_text=new_captcha.text,
+                    )
+                    await bot.send_file(
+                        event.sender.id,
+                        file=new_captcha.image,
+                        caption=LL.captcha_wait_for_answer,
+                    )
+                    return
+
+                try:
+
+                    log_channel_id = await BotDB.get_log_channel(captcha.for_chat)
+                    await bot(
+                        HideChatJoinRequestRequest(
+                            peer=captcha.for_chat,
+                            user_id=event.sender.id,
+                            approved=True,
+                        )
+                    )
+
+                    await bot.send_message(
+                        event.sender.id,
+                        LL.request_approved,
+                    )
+                    await Usc.update(event.sender.id, States.START)
+                    if log_channel_id:
+                        new_approve = "#NEW_APPROVE"
+                        new_approve += "\n<b>Чат:</b> [#peer{}]".format(
+                            captcha.for_chat
+                        )
+                        new_approve += "\n<b>Пользователь:</b> {} [@{}][#id{}]".format(
+                            escape(event.sender.first_name),
+                            event.sender.username if event.sender.username else "",
+                            event.sender.id,
+                        )
+                        await bot.send_message(log_channel_id, new_approve)
+
+                except BadRequestError:
+                    await bot.send_message(
+                        event.sender.id,
+                        LL.approve_error,
+                    )
+                    await Usc.update(event.sender.id, States.START)
+                    return
+
+                return
+            if captcha.error:
+                await bot.send_message(
+                    event.sender.id,
+                    LL.captcha_critical_error,
+                )
+                return
+            return
 
 
 @bot.on(events.CallbackQuery)
@@ -67,26 +166,49 @@ async def callback_handler(event):
         '<действие>.<данные>'
         Доступные действия:
             join    | j<chat_id:int>
-            connect | c<channel_id:int>
+            connect | c<chat_id:int>.<channel_id:int>
             ...
         Пример:
             'j1000000'
-            'c2000000'
+            'c1000000.1200000'
     """
 
     decoded_data = event.data.decode("utf-8")
     action = decoded_data[0]
-    user_id = event.query.user_id
+    user_id = int(event.query.user_id)
     if action == "j":
         chat_id = decoded_data[1:]
         _captcha = await CaptchaWrapper().generate(*captcha_settings)
 
-        await BotDB.add_captcha(user_id=user_id,
-                                text=_captcha.text,
-                                chat_id=chat_id)
+        await BotDB.add_captcha(user_id=user_id, text=_captcha.text, chat_id=chat_id)
         await event.edit(LL.enter_image_text)
         await bot.send_message(user_id, file=_captcha.image)
         await Usc.update(user_id, States.WAIT_FOR_ANSWER)
+
+    if action == "c":
+        chat_id = int(decoded_data[1:].split(".")[0])
+        channel_id = int(decoded_data[1:].split(".")[1])
+        if chat_id < 0:
+            chat_id = int("-100{}".format(chat_id))
+
+        user_permissions = await bot.get_permissions(entity=chat_id, user=user_id)
+        if not user_permissions.is_admin:
+            await event.answer(LL.you_dont_have_admin_perms, alert=True)
+            return
+        try:
+            await bot.send_message(
+                channel_id, LL.log_channel_added_post.format(escape(event.chat.title))
+            )
+        except ChannelPrivateError:
+            await event.edit(LL.log_channel_add_error)
+            return
+        except ChatAdminRequiredError:
+            await event.edit(LL.log_channel_missing_perms)
+            return
+        else:
+            await event.edit(LL.log_channel_added)
+            await BotDB.set_log_channel(chat_id, channel_id)
+            return
 
 
 @bot.on(events.ChatAction)
@@ -103,8 +225,7 @@ async def new_add_greetings(event: Message) -> None:
             )
 
 
-@bot.on(
-    events.NewMessage(incoming=True, forwards=False, pattern=r"(/)feedback"))
+@bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"(/)feedback"))
 @BotSecurity.limiter(only_private=True)
 @Usc.START
 async def feedback_cmd(event: Message) -> None:
@@ -118,7 +239,12 @@ async def feedback_cmd(event: Message) -> None:
 async def eve_init_cmd(event: Message) -> None:
 
     admin_rights = event.chat.admin_rights
-    public_group = event.chat.username
+    public_group = (
+        event.chat.username
+        if hasattr(event.chat, "username") and event.chat.username
+        else False
+    )
+
     # slowmode = event.chat.slowmode_enabled
     # noforwards = event.chat.noforwards
     wait_msg = await bot.send_message(event.chat.id, LL.initializing)
@@ -145,7 +271,8 @@ async def eve_init_cmd(event: Message) -> None:
         return
 
     report = "<i>Чат {} был определен как <b>закрытый</b>...</i>   🆗".format(
-        event.chat.title)
+        event.chat.title
+    )
 
     if not admin_rights.invite_users:
         report += "\n❗Права админа предоставлены, но не хватает нужных полномочий на:"
@@ -157,6 +284,72 @@ async def eve_init_cmd(event: Message) -> None:
     await bot.edit_message(wait_msg, report)
     await asyncio.sleep(1)
     await bot.send_message(event.chat, "Готова к работе.")
+
+
+@bot.on(events.NewMessage(incoming=True, pattern=r"(/)connect"))
+@BotSecurity.limiter(no_private=True, anonymous=True)
+async def connect_cmd(event: Message) -> None:
+
+    chat_id = event.chat.id
+
+    admin_rights = event.chat.admin_rights
+    if not admin_rights:
+        await event.respond(LL.connect_missing_perms)
+        return
+
+    if event.forward and event.forward.is_channel:
+
+        if utils.is_anon(event):
+            button_text = LL.connect_anonymous_detected
+            await bot.send_message(
+                event.chat.id,
+                button_text,
+                buttons=[
+                    [
+                        Button.inline(
+                            "Подтвердить",
+                            bytes(
+                                "c{}.{}".format(
+                                    event.chat.id, event.forward.from_id.channel_id
+                                ),
+                                encoding="utf-8",
+                            ),
+                        )
+                    ]
+                ],
+            )
+            return
+
+        try:
+            user_permissions = await bot.get_permissions(
+                chat_id if chat_id < 0 else int("-100{}".format(chat_id)),
+                user=event.sender.id,
+            )
+            if not user_permissions.is_admin:
+                await event.reply(LL.you_dont_have_admin_perms)
+                return
+        except ChatIdInvalidError:
+            return
+
+        try:
+            await bot.send_message(
+                event.forward.from_id.channel_id,
+                LL.log_channel_added_post.format(escape(event.chat.title)),
+            )
+        except ChannelPrivateError as e:
+            await event.respond(LL.log_channel_add_error)
+            return
+        except ChatAdminRequiredError:
+            await event.respond(LL.log_channel_missing_perms)
+            return
+        else:
+            await event.respond(LL.log_channel_added)
+            await BotDB.set_log_channel(event.chat.id, event.forward.from_id.channel_id)
+            return
+    else:
+        await event.respond(LL.connect_forward_cmd)
+
+    await utils.log_event(event, "connect")
 
 
 @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"(/)start"))
@@ -183,6 +376,7 @@ async def cancel_cmd(event: Message) -> None:
 
     await event.respond(LL.cancelled)
     await Usc.update(event.sender.id, States.START)
+    await utils.log_event(event, "/cancel")
 
 
 # @bot.on(events.NewMessage(incoming=True, forwards=False, pattern="(?i)ева*"))
@@ -213,7 +407,7 @@ async def join_cmd(event: Message) -> None:
 
     pending_chats: list = await BotDB.get_pending_chats(event.sender.id)
     please_wait = await event.respond(LL.loading_requests_list)
-
+    await utils.log_event(event, "/join")
     if not pending_chats:
         await bot.edit_message(please_wait, LL.requests_not_found)
         return
@@ -265,12 +459,14 @@ async def join_cmd(event: Message) -> None:
     buttons = []
     for c in chats_info:
         # был пьян
-        buttons.append([
-            Button.inline(
-                escape(c.title if len(c.title) < 8 else c.title[:8] + ".."),
-                bytes("j{}".format(c.id), encoding="utf-8"),
-            )
-        ])
+        buttons.append(
+            [
+                Button.inline(
+                    escape(c.title if len(c.title) < 8 else c.title[:8] + ".."),
+                    bytes("j{}".format(c.id), encoding="utf-8"),
+                )
+            ]
+        )
 
     await bot.delete_messages(event.chat, message_ids=please_wait)
     result = LL.found_requests
@@ -278,20 +474,21 @@ async def join_cmd(event: Message) -> None:
 
 
 @bot.on(
-    events.NewMessage(incoming=True,
-                      forwards=False,
-                      pattern=r"(/)(chatid|chat_id)"))
+    events.NewMessage(incoming=True, forwards=False, pattern=r"(/)(chatid|chat_id)")
+)
 @BotSecurity.limiter(anonymous=True)
 async def chatid_cmd(event: Message) -> None:
 
     if not utils.is_private(event):
         chatid_text = "<b>{}</b> chat ID: <code>-100{}</code>".format(
-            escape(event.chat.title), event.chat.id)
+            escape(event.chat.title), event.chat.id
+        )
         await event.reply(chatid_text)
         await utils.log_event(event, "/chatid")
     else:
         chatid_text = "{} ID <code>{}</code>".format(
-            escape(event.sender.first_name), event.chat.id)
+            escape(event.sender.first_name), event.chat.id
+        )
         await event.reply(chatid_text)
         await utils.log_event(event, "/chatid")
 
@@ -313,12 +510,14 @@ async def send_help(event: Message) -> None:
             entity=event.chat.id,
             reply_to=event.message.id,
             message=LL.help_go_pm,
-            buttons=[[
-                Button.url(
-                    LL.help_btn_text,
-                    "https://t.me/{}".format(BotSecurity.bot_username),
-                )
-            ]],
+            buttons=[
+                [
+                    Button.url(
+                        LL.help_btn_text,
+                        "https://t.me/{}".format(BotSecurity.bot_username),
+                    )
+                ]
+            ],
         )
         await utils.log_event(event, "/help")
 
@@ -330,18 +529,20 @@ async def join_requests_handler(event: Message) -> None:
 
     """
 
-    _chat_id = (event.chat_id if not str(event.chat_id).startswith("-100") else
-                int(str(event.chat_id)[4:]))
+    _chat_id = (
+        event.chat_id
+        if not str(event.chat_id).startswith("-100")
+        else int(str(event.chat_id)[4:])
+    )
 
+    log_channel_id = await BotDB.get_log_channel(_chat_id)
     # ca_stopped = await BotDB.chat_ca_handle_status(_chat_id)
     # if ca_stopped:
     #     return
 
     _captcha = await CaptchaWrapper().generate(*captcha_settings)
     await BotDB.add_user(user_id=event.user.id, name=event.user.first_name)
-    await BotDB.add_captcha(user_id=event.user_id,
-                            text=_captcha.text,
-                            chat_id=_chat_id)
+    await BotDB.add_captcha(user_id=event.user_id, text=_captcha.text, chat_id=_chat_id)
 
     greeting = LL.captcha_greetings
 
@@ -351,6 +552,17 @@ async def join_requests_handler(event: Message) -> None:
         caption=greeting.format(escape(event.chat.title)),
     )
     await Usc.update(event.user_id, States.WAIT_FOR_ANSWER)
+    if log_channel_id:
+        new_request = "#NEW_JOINREQUEST"
+        new_request += "\n<b>Чат:</b> {} [#peer{}]".format(
+            escape(event.chat.title), event.chat.id
+        )
+        new_request += "\n<b>Пользователь:</b> {} [@{}][#id{}]".format(
+            escape(event.user.first_name),
+            event.user.username if event.user.username else "",
+            event.user.id,
+        )
+        await bot.send_message(log_channel_id, new_request)
 
 
 @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"(/)new"))
@@ -362,90 +574,7 @@ async def renew_captcha_cmd(event: Message) -> None:
 
     await BotDB.renew_captcha(user_id=event.sender.id, text=_captcha.text)
     await event.respond(LL.captcha_updated, file=_captcha.image)
-
-
-@bot.on(events.NewMessage(incoming=True, forwards=False))
-@BotSecurity.limiter(only_private=True)
-async def handle_all(event: Message) -> None:
-
-    user_state = await Usc.get(event.sender.id)
-
-    if user_state == States.FEEDBACK_WAIT_FOR_ANSWER:
-
-        await bot.forward_messages(BotSecurity.owner_id, event.message)
-        await event.respond(LL.feedback_thanks)
-        await Usc.update(event.chat.id, States.START)
-        return
-
-    if user_state == States.WAIT_FOR_ANSWER:
-
-        answer = event.message.text
-        if answer.startswith("/new"):
-            await renew_captcha_cmd(event)
-
-        if len(answer) > 32:
-            await bot.send_message(event.sender.id, LL.max_symbols_error)
-            return
-
-        for char in answer:
-            if char.isalpha() or char.isnumeric():
-                continue
-            else:
-                await bot.send_message(event.sender.id, LL.incorrect_answer)
-                return
-
-        captcha: Captcha = await BotDB.solve_captcha(user_id=event.sender.id,
-                                                     text=answer)
-
-        if captcha.found:
-
-            if captcha.expired:
-                await bot.send_message(
-                    event.sender.id,
-                    LL.captcha_code_expired,
-                )
-                new_captcha = await CaptchaWrapper().generate(*captcha_settings
-                                                              )
-                await BotDB.refresh_captcha(
-                    user_id=event.sender.id,
-                    expired_text=captcha.text,
-                    new_text=new_captcha.text,
-                )
-                await bot.send_file(event.sender.id,
-                                    file=new_captcha.image,
-                                    caption=LL.captcha_wait_for_answer)
-                return
-
-            try:
-                await bot(
-                    HideChatJoinRequestRequest(
-                        peer=captcha.for_chat,
-                        user_id=event.sender.id,
-                        approved=True,
-                    ))
-
-                await bot.send_message(
-                    event.sender.id,
-                    LL.request_approved,
-                )
-                await Usc.update(event.sender.id, States.START)
-
-            except BadRequestError:
-                await bot.send_message(
-                    event.sender.id,
-                    LL.approve_error,
-                )
-                await Usc.update(event.sender.id, States.START)
-                return
-
-            return
-        if captcha.error:
-            await bot.send_message(
-                event.sender.id,
-                LL.captcha_critical_error,
-            )
-            return
-        return
+    await utils.log_event(event, "/new")
 
 
 def start():
