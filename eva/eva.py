@@ -3,10 +3,7 @@
 #    Eva Telegram Bot (https://t.me/storoxbot)
 #    2020-2022
 
-
 import asyncio
-
-import cryptg  # type: ignore
 
 from markupsafe import escape
 
@@ -25,7 +22,6 @@ from .structs import Captcha
 from .wrappers import CaptchaWrapper
 from .langs.languages import Language
 
-
 Usc = UserStatesControl()
 States = Usc.states
 
@@ -38,14 +34,12 @@ LL = Language.load("ru")
 
 BotDB.create()
 
-
 captcha_settings = BotConfig.get_captcha_settings()
 api_id, api_hash = BotConfig.get_api_params()
 BOT_TOKEN = BotConfig.get_bot_token()
 
-bot = TelegramClient(
-    "mainbot", api_id, api_hash, flood_sleep_threshold=30
-).start(bot_token=BOT_TOKEN)
+bot = TelegramClient("mainbot", api_id, api_hash,
+                     flood_sleep_threshold=30).start(bot_token=BOT_TOKEN)
 del BOT_TOKEN
 bot.parse_mode = "html"
 
@@ -72,24 +66,24 @@ async def callback_handler(event):
     Форматы bytes-данных:
         '<действие>.<данные>'
         Доступные действия:
-            join    | j.<chat_id:int>
-            connect | c.<channel_id:int>
+            join    | j<chat_id:int>
+            connect | c<channel_id:int>
             ...
         Пример:
-            'j.1000000'
-            'c.2000000'
+            'j1000000'
+            'c2000000'
     """
 
     decoded_data = event.data.decode("utf-8")
-    action = decoded_data.split(".")[0]
+    action = decoded_data[0]
     user_id = event.query.user_id
     if action == "j":
-        chat_id = decoded_data.split(".")[1]
+        chat_id = decoded_data[1:]
         _captcha = await CaptchaWrapper().generate(*captcha_settings)
 
-        await BotDB.add_captcha(
-            user_id=user_id, text=_captcha.text, chat_id=chat_id
-        )
+        await BotDB.add_captcha(user_id=user_id,
+                                text=_captcha.text,
+                                chat_id=chat_id)
         await event.edit(LL.enter_image_text)
         await bot.send_message(user_id, file=_captcha.image)
         await Usc.update(user_id, States.WAIT_FOR_ANSWER)
@@ -110,8 +104,7 @@ async def new_add_greetings(event: Message) -> None:
 
 
 @bot.on(
-    events.NewMessage(incoming=True, forwards=False, pattern=r"(/)feedback")
-)
+    events.NewMessage(incoming=True, forwards=False, pattern=r"(/)feedback"))
 @BotSecurity.limiter(only_private=True)
 @Usc.START
 async def feedback_cmd(event: Message) -> None:
@@ -147,18 +140,15 @@ async def eve_init_cmd(event: Message) -> None:
         await asyncio.sleep(2)
         wait_msg = await bot.edit_message(
             wait_msg,
-            LL.private_group_but_permissions.format(
-                escape(event.chat.title)
-            ),
+            LL.private_group_but_permissions.format(escape(event.chat.title)),
         )
         return
 
     report = "<i>Чат {} был определен как <b>закрытый</b>...</i>   🆗".format(
-        event.chat.title
-    )
+        event.chat.title)
 
     if not admin_rights.invite_users:
-        report += "\n❗Права админа предоставлены. Но не хватает нужных полномочий на:"
+        report += "\n❗Права админа предоставлены, но не хватает нужных полномочий на:"
         report += "\n <i>> Управление приглашениями и ссылками</i>"
         await bot.edit_message(wait_msg, report)
         return
@@ -205,7 +195,7 @@ async def eva_trigger(event: Message) -> None:
 
     stop_list = ["стоп", "stop"]
     start_list = ["старт", "start", "проснись", "работать"]
-    user_command = args[0]
+    user_command = args[0].lower()
     if user_command in stop_list:
         await BotDB.stop_handling(chat_id=event.chat.id)
         await event.respond(LL.requests_handling_stopped)
@@ -233,7 +223,7 @@ async def join_cmd(event: Message) -> None:
         button = [
             Button.inline(
                 LL.join_btn,
-                bytes("j.{}".format(pending_chat_id), encoding="utf-8"),
+                bytes("j{}".format(pending_chat_id), encoding="utf-8"),
             )
         ]
         try:
@@ -256,62 +246,52 @@ async def join_cmd(event: Message) -> None:
         )
         return
 
-    else:
+    chats_info = []
+    for chat in pending_chats:
+        try:
+            if chat > 1:
+                """
+                Супергруппы, мегагруппы и каналы не имеют минуса
+                перед числовым ИД (положительные),
+                в отличие от маленьких базовых групп, где все админы по умолчанию.
+                """
+                chat_returned = await bot(GetChannelsRequest(id=[chat]))
+            else:
+                chat_returned = await bot(GetChatsRequest(id=[chat]))
+            chats_info.append(chat_returned.chats[0])
+        except Exception:
+            pass  # FIXME
 
-        chats_info = []
-        for chat in pending_chats:
-            try:
-                if chat > 1:
-                    """
-                    Супергруппы, мегагруппы и каналы не имеют минуса
-                    перед числовым ИД (положительные),
-                    в отличие от маленьких базовых групп, где все админы по умолчанию.
-
-                    """
-                    chat_returned = await bot(GetChannelsRequest(id=[chat]))
-                else:
-                    chat_returned = await bot(GetChatsRequest(id=[chat]))
-                chats_info.append(chat_returned.chats[0])
-            except:
-                pass # FIXME
-
-        buttons = []
-        for c in chats_info:
-            # был пьян
-            buttons.append(
-                [
-                    Button.inline(
-                        escape(
-                            c.title if len(c.title) < 8 else c.title[:8] + ".."
-                        ),
-                        bytes("j.{}".format(c.id), encoding="utf-8"),
-                    )
-                ]
+    buttons = []
+    for c in chats_info:
+        # был пьян
+        buttons.append([
+            Button.inline(
+                escape(c.title if len(c.title) < 8 else c.title[:8] + ".."),
+                bytes("j{}".format(c.id), encoding="utf-8"),
             )
+        ])
 
-        await bot.delete_messages(event.chat, message_ids=please_wait)
-        result = LL.found_requests
-        await bot.send_message(event.sender.id, result, buttons=buttons)
+    await bot.delete_messages(event.chat, message_ids=please_wait)
+    result = LL.found_requests
+    await bot.send_message(event.sender.id, result, buttons=buttons)
 
 
 @bot.on(
-    events.NewMessage(
-        incoming=True, forwards=False, pattern=r"(/)(chatid|chat_id)"
-    )
-)
+    events.NewMessage(incoming=True,
+                      forwards=False,
+                      pattern=r"(/)(chatid|chat_id)"))
 @BotSecurity.limiter(anonymous=True)
 async def chatid_cmd(event: Message) -> None:
 
     if not utils.is_private(event):
         chatid_text = "<b>{}</b> chat ID: <code>-100{}</code>".format(
-            escape(event.chat.title), event.chat.id
-        )
+            escape(event.chat.title), event.chat.id)
         await event.reply(chatid_text)
         await utils.log_event(event, "/chatid")
     else:
         chatid_text = "{} ID <code>{}</code>".format(
-            escape(event.sender.first_name), event.chat.id
-        )
+            escape(event.sender.first_name), event.chat.id)
         await event.reply(chatid_text)
         await utils.log_event(event, "/chatid")
 
@@ -333,31 +313,25 @@ async def send_help(event: Message) -> None:
             entity=event.chat.id,
             reply_to=event.message.id,
             message=LL.help_go_pm,
-            buttons=[
-                [
-                    Button.url(
-                        LL.help_btn_text,
-                        "https://t.me/{}".format(BotSecurity.bot_username),
-                    )
-                ]
-            ],
+            buttons=[[
+                Button.url(
+                    LL.help_btn_text,
+                    "https://t.me/{}".format(BotSecurity.bot_username),
+                )
+            ]],
         )
         await utils.log_event(event, "/help")
 
 
 @bot.on(events.ChatAction(func=lambda e: e.new_join_request))
 async def join_requests_handler(event: Message) -> None:
-
     """
     Главный обработчик новых заявок.
 
     """
 
-    _chat_id = (
-        event.chat_id
-        if not str(event.chat_id).startswith("-100")
-        else int(str(event.chat_id)[4:])
-    )
+    _chat_id = (event.chat_id if not str(event.chat_id).startswith("-100") else
+                int(str(event.chat_id)[4:]))
 
     # ca_stopped = await BotDB.chat_ca_handle_status(_chat_id)
     # if ca_stopped:
@@ -365,9 +339,9 @@ async def join_requests_handler(event: Message) -> None:
 
     _captcha = await CaptchaWrapper().generate(*captcha_settings)
     await BotDB.add_user(user_id=event.user.id, name=event.user.first_name)
-    await BotDB.add_captcha(
-        user_id=event.user_id, text=_captcha.text, chat_id=_chat_id
-    )
+    await BotDB.add_captcha(user_id=event.user_id,
+                            text=_captcha.text,
+                            chat_id=_chat_id)
 
     greeting = LL.captcha_greetings
 
@@ -420,9 +394,8 @@ async def handle_all(event: Message) -> None:
                 await bot.send_message(event.sender.id, LL.incorrect_answer)
                 return
 
-        captcha: Captcha = await BotDB.solve_captcha(
-            user_id=event.sender.id, text=answer
-        )
+        captcha: Captcha = await BotDB.solve_captcha(user_id=event.sender.id,
+                                                     text=answer)
 
         if captcha.found:
 
@@ -431,17 +404,16 @@ async def handle_all(event: Message) -> None:
                     event.sender.id,
                     LL.captcha_code_expired,
                 )
-                new_captcha = await CaptchaWrapper().generate(*captcha_settings)
+                new_captcha = await CaptchaWrapper().generate(*captcha_settings
+                                                              )
                 await BotDB.refresh_captcha(
                     user_id=event.sender.id,
                     expired_text=captcha.text,
                     new_text=new_captcha.text,
                 )
-                await bot.send_file(
-                    event.sender.id,
-                    file=new_captcha.image,
-                    caption=LL.captcha_wait_for_answer
-                )
+                await bot.send_file(event.sender.id,
+                                    file=new_captcha.image,
+                                    caption=LL.captcha_wait_for_answer)
                 return
 
             try:
@@ -450,8 +422,7 @@ async def handle_all(event: Message) -> None:
                         peer=captcha.for_chat,
                         user_id=event.sender.id,
                         approved=True,
-                    )
-                )
+                    ))
 
                 await bot.send_message(
                     event.sender.id,
