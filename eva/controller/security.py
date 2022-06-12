@@ -182,7 +182,7 @@ Please do not use several opposite params (i.e., \
                                     chat_id
                                 )
                             raise StopPropagation
-                        elif (
+                        if (
                             now - int(last_action.timestamp()) > cd
                             and not blocked
                         ):
@@ -192,14 +192,13 @@ Please do not use several opposite params (i.e., \
                                     chat_id
                                 )
                             raise StopPropagation
-                        else:
-                            print(
-                                "** id{} has ignored:: \
+                        print(
+                            "** id{} has ignored:: \
 anonymous admin is banned cooldown has not expired".format(
-                                    chat_id
-                                )
+                                chat_id
                             )
-                            return False
+                        )
+                        return False
                     else:
                         await event_function(*events, **kwargs)
                         if use_limiter:
@@ -217,7 +216,7 @@ anonymous admin is banned cooldown has not expired".format(
                         if use_limiter:
                             this.db_wrapper.update_limiter(user_id)
                         raise StopPropagation
-                    elif (
+                    if (
                         now - int(last_request.timestamp()) > cd
                         and not blocked
                     ):
@@ -225,14 +224,13 @@ anonymous admin is banned cooldown has not expired".format(
                         if use_limiter:
                             this.db_wrapper.update_limiter(user_id)
                         raise StopPropagation
-                    else:
-                        print(
-                            "** id{} has ignored:: \
+                    print(
+                        "** id{} has ignored:: \
 user is blocked or cooldown has not expired".format(
-                                user_id
-                            )
+                            user_id
                         )
-                        return False
+                    )
+                    return False
 
                 else:
                     await event_function(*events, **kwargs)
