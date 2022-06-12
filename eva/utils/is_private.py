@@ -24,9 +24,6 @@ def is_private(data: Message, group: bool = False) -> bool:
         return False
 
     if hasattr(data.chat, "username"):
-        if not data.chat.username:
-            return True
-        else:
-            return False
+        return bool(not data.chat.username)
     else:
         return True
