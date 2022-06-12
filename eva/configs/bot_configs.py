@@ -65,6 +65,11 @@ Missing "DATABASE_URL" env var or "config.ini" file')
                 this.get_bot_token()))
         return _api_response.json().get("result").get("username")
 
+    def is_valid_token(this, token = str) -> bool:
+        _api_response = httpx_get(
+            "https://api.telegram.org/bot{}/getMe".format(token))
+        return _api_response.json().get("result").get("ok")
+
     def get_bot_id(this) -> int:
 
         return int(this.get_bot_token().split(":")[0])

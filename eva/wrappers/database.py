@@ -230,7 +230,10 @@ class DatabaseWrapper:
                     SET
                         name = excluded.name,
                         domain = excluded.domain,
-                        in_chats = CASE WHEN NOT(users_stats.in_chats @> ARRAY[ %(chat_arr)s ]::int[]) THEN users_stats.in_chats || ARRAY[ %(chat_arr)s ]::int[] ELSE users_stats.in_chats end;
+                        in_chats = CASE WHEN
+                            NOT (users_stats.in_chats @> ARRAY[ %(chat_arr)s ]::int[])
+                            THEN users_stats.in_chats || ARRAY[ %(chat_arr)s ]::int[]
+                            ELSE users_stats.in_chats end;
 
 
                 INSERT
