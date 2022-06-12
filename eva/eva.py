@@ -18,11 +18,12 @@ from telethon.errors.rpcerrorlist import ChannelPrivateError
 from telethon.errors.rpcerrorlist import ChatAdminRequiredError
 from telethon.errors.rpcerrorlist import ChatIdInvalidError
 
-from . import utils
-from .controller import BotSecurity, UserStatesControl
-from .structs import Captcha
-from .wrappers import CaptchaWrapper
-from .langs.languages import Language
+from eva import BotSecurity
+from eva import UserStatesControl
+from eva import Captcha
+from eva import CaptchaWrapper
+from eva import Language
+from eva import utils
 
 Usc = UserStatesControl()
 States = Usc.states
@@ -34,21 +35,10 @@ BotConfig = BotDB.BotConfigExtended
 # Locale Language
 LL = Language.load("ru")
 
-BotDB.create()
-
 captcha_settings = BotConfig.get_captcha_settings()
 api_id, api_hash = BotConfig.get_api_params()
-BOT_TOKEN = BotConfig.get_bot_token()
 
-bot = TelegramClient("mainbot", api_id, api_hash, flood_sleep_threshold=30).start(
-    bot_token=BOT_TOKEN
-)
-del BOT_TOKEN
-bot.parse_mode = "html"
-
-print("Started for {}".format(BotSecurity.bot_id))
-print()
-print("Admin ID: {}".format(BotConfig.get_owner_id()))
+bot = TelegramClient("main", api_id, api_hash, flood_sleep_threshold=30)
 
 
 @bot.on(events.NewMessage(incoming=True, forwards=False))
@@ -214,7 +204,6 @@ async def callback_handler(event):
 @bot.on(events.ChatAction)
 async def new_add_greetings(event: Message) -> None:
 
-    # Нас добавили ^____^
     if event.user_added:
         if BotSecurity.bot_id in event.action_message.action.users:
             await bot.send_message(event.chat, LL.start_text)
@@ -245,8 +234,6 @@ async def eve_init_cmd(event: Message) -> None:
         else False
     )
 
-    # slowmode = event.chat.slowmode_enabled
-    # noforwards = event.chat.noforwards
     wait_msg = await bot.send_message(event.chat.id, LL.initializing)
     await asyncio.sleep(1)
     wait_msg = await bot.edit_message(wait_msg, LL.loading_data)
@@ -336,7 +323,7 @@ async def connect_cmd(event: Message) -> None:
                 event.forward.from_id.channel_id,
                 LL.log_channel_added_post.format(escape(event.chat.title)),
             )
-        except ChannelPrivateError as e:
+        except ChannelPrivateError:
             await event.respond(LL.log_channel_add_error)
             return
         except ChatAdminRequiredError:
@@ -453,12 +440,12 @@ async def join_cmd(event: Message) -> None:
             else:
                 chat_returned = await bot(GetChatsRequest(id=[chat]))
             chats_info.append(chat_returned.chats[0])
-        except Exception:
+        except:
             pass  # FIXME
 
     buttons = []
     for c in chats_info:
-        # был пьян
+
         buttons.append(
             [
                 Button.inline(
@@ -536,9 +523,6 @@ async def join_requests_handler(event: Message) -> None:
     )
 
     log_channel_id = await BotDB.get_log_channel(_chat_id)
-    # ca_stopped = await BotDB.chat_ca_handle_status(_chat_id)
-    # if ca_stopped:
-    #     return
 
     _captcha = await CaptchaWrapper().generate(*captcha_settings)
     await BotDB.add_user(user_id=event.user.id, name=event.user.first_name)
@@ -577,6 +561,15 @@ async def renew_captcha_cmd(event: Message) -> None:
     await utils.log_event(event, "/new")
 
 
-def start():
+def start(optional_args):
 
+    BotDB.create()
+    BOT_TOKEN = BotConfig.get_bot_token()
+
+    bot.start(bot_token=BOT_TOKEN)
+    bot.parse_mode = "html"
+
+    print("Started for {}".format(BotSecurity.bot_id))
+    print()
+    print("Admin ID: {}".format(BotConfig.get_owner_id()))
     bot.run_until_disconnected()
