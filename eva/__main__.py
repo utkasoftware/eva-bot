@@ -11,7 +11,8 @@ from argparse import ArgumentParser
 parser = ArgumentParser(description="Eva optional run args", prog=__package__)
 
 parser.add_argument("--dev",
-    action="store_true", help="Dev mode: enable verbose logging")
+    action="store_true", help="Dev mode: enable VERBOSE logging")
+parser.add_argument("-l", "--log", help="Logging level", dest="log_level", required=False)
 # parser.add_argument("-t", "--token", help="Bot token", dest="token", required=False)
 # parser.add_argument("-a", "--admin", dest="admin_id", default=0, type=int)
 

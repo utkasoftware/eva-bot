@@ -5,6 +5,9 @@
 
 import asyncio
 
+import coloredlogs
+logging = coloredlogs.logging
+
 from markupsafe import escape
 
 from telethon import TelegramClient, events  # type: ignore
@@ -34,6 +37,8 @@ BotConfig = BotDB.BotConfigExtended
 
 # Locale Language
 LL = Language.load("ru")
+
+CaptchaWrapper = CaptchaWrapper()
 
 captcha_settings = BotConfig.get_captcha_settings()
 api_id, api_hash = BotConfig.get_api_params()
@@ -78,25 +83,22 @@ async def all_handler(event: Message) -> None:
                     await bot.send_message(event.sender.id, LL.incorrect_answer)
                     return
 
-            captcha: Captcha = await BotDB.solve_captcha(
+            captcha = await BotDB.solve_captcha(
                 user_id=event.sender.id, text=answer
             )
 
             if captcha.found:
 
                 if captcha.expired:
+
+                    new_captcha = CaptchaWrapper.generate(*captcha_settings)
                     await bot.send_message(
                         event.sender.id,
                         LL.captcha_code_expired,
                     )
-                    new_captcha = await CaptchaWrapper().generate(*captcha_settings)
-                    await BotDB.refresh_captcha(
-                        user_id=event.sender.id,
-                        expired_text=captcha.text,
-                        new_text=new_captcha.text,
-                    )
-                    await bot.send_file(
-                        event.sender.id,
+
+                    await BotDB.refresh_captcha(id=captcha.id, new_text=new_captcha.text)
+                    await bot.send_file(event.sender.id,
                         file=new_captcha.image,
                         caption=LL.captcha_wait_for_answer,
                     )
@@ -168,7 +170,7 @@ async def callback_handler(event):
     user_id = int(event.query.user_id)
     if action == "j":
         chat_id = decoded_data[1:]
-        _captcha = await CaptchaWrapper().generate(*captcha_settings)
+        _captcha = CaptchaWrapper.generate(*captcha_settings)
 
         await BotDB.add_captcha(user_id=user_id, text=_captcha.text, chat_id=chat_id)
         await event.edit(LL.enter_image_text)
@@ -524,7 +526,7 @@ async def join_requests_handler(event: Message) -> None:
 
     log_channel_id = await BotDB.get_log_channel(_chat_id)
 
-    _captcha = await CaptchaWrapper().generate(*captcha_settings)
+    _captcha = CaptchaWrapper.generate(*captcha_settings)
     await BotDB.add_user(user_id=event.user.id, name=event.user.first_name)
     await BotDB.add_captcha(user_id=event.user_id, text=_captcha.text, chat_id=_chat_id)
 
@@ -554,7 +556,7 @@ async def join_requests_handler(event: Message) -> None:
 @Usc.WAIT_FOR_ANSWER
 async def renew_captcha_cmd(event: Message) -> None:
 
-    _captcha = await CaptchaWrapper().generate(*captcha_settings)
+    _captcha = CaptchaWrapper.generate(*captcha_settings)
 
     await BotDB.renew_captcha(user_id=event.sender.id, text=_captcha.text)
     await event.respond(LL.captcha_updated, file=_captcha.image)
@@ -563,13 +565,16 @@ async def renew_captcha_cmd(event: Message) -> None:
 
 def start(optional_args):
 
+    default_format = "%(asctime)s %(funcName)s::%(lineno)d.%(levelname)s: %(message)s"
+    logger = logging.getLogger()
+    coloredlogs.install(level="INFO", fmt=default_format)
+
     BotDB.create()
     BOT_TOKEN = BotConfig.get_bot_token()
 
     bot.start(bot_token=BOT_TOKEN)
     bot.parse_mode = "html"
 
-    print("Started for {}".format(BotSecurity.bot_id))
-    print()
-    print("Admin ID: {}".format(BotConfig.get_owner_id()))
+    logger.info("Started for {}".format(BotSecurity.bot_id))
+    logger.info("Admin ID: {}".format(BotConfig.get_owner_id()))
     bot.run_until_disconnected()

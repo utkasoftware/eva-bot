@@ -82,18 +82,18 @@ class CaptchaWrapper:
             "Z",
         ]
 
-        this.__text = []
         this.Captcha = Captcha
 
-    async def generate(
+    def generate(
         this, length: int = 5, width: int = 250, height: int = 180
     ) -> Captcha:
 
+        text = []
         for i in range(length):
-            this.__text.append(choice(this.__chars))
+            text.append(choice(this.__chars))
 
         image_obj = ImageCaptcha(width=width, height=height)
-        this.Captcha.text = "".join(this.__text)
-        this.Captcha.image = image_obj.generate(this.__text)
+        this.Captcha.text = "".join(text)
+        this.Captcha.image = image_obj.generate(text)
 
         return Captcha

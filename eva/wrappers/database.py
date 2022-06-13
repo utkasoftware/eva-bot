@@ -399,12 +399,12 @@ class DatabaseWrapper:
     async def solve_captcha(this, user_id: int, text: str) -> Captcha:
 
         cur = this.con.cursor()
-        ret_captcha = Captcha
+        ret_captcha = Captcha()
         try:
             cur.execute(
                 """
                 SELECT
-                    ca_for, ca_time
+                    id, ca_for, ca_time
                 FROM
                     captcha
                 WHERE
@@ -424,11 +424,12 @@ class DatabaseWrapper:
         row = list(row)
         now = int(datetime.now().timestamp())
 
-        if row[0]:
-            ret_captcha.for_chat = row[0]
+        if row:
+            ret_captcha.id = row[0]
+            ret_captcha.for_chat = row[1]
             ret_captcha.found = True
 
-        ret_captcha.created_at = row[1]
+        ret_captcha.created_at = row[2]
 
         timediff = now - int(ret_captcha.created_at.timestamp())
 
@@ -451,9 +452,7 @@ class DatabaseWrapper:
 
         return ret_captcha
 
-    async def refresh_captcha(
-        this, user_id: int, expired_text: str, new_text: str
-    ) -> None:
+    async def refresh_captcha(this, id: int, new_text: str) -> None:
         """Updates expired captcha"""
 
         cur = this.con.cursor()
@@ -464,13 +463,12 @@ class DatabaseWrapper:
             SET
                 ca_text = %(ntext)s, ca_time = %(ntime)s
             WHERE
-                (user_id = %(uid)s AND ca_text = %(extext)s)
+                (id = %(id)s)
             """,
             {
                 "ntext": new_text.lower(),
                 "ntime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "uid": user_id,
-                "extext": expired_text,
+                "id": id,
             },
         )
         this.con.commit()
