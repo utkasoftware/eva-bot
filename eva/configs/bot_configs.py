@@ -8,9 +8,6 @@ from typing import Union
 from urllib.parse import urlparse
 from configparser import ConfigParser
 
-import logging
-import coloredlogs
-
 from httpx import get as httpx_get
 
 
@@ -30,10 +27,6 @@ class BotConfig:
         if not this.config.has_section("database") and not this.postgresql_url:
             raise Exception('Database params not found: \
 Missing "DATABASE_URL" env var or "config.ini" file')
-
-        coloredlogs.install()
-        logging.basicConfig(level=logging.INFO,
-                            format="%(asctime)s - %(message)s")
 
     def get_connect_params(this) -> list[str]:
 
@@ -64,6 +57,11 @@ Missing "DATABASE_URL" env var or "config.ini" file')
             "https://api.telegram.org/bot{}/getMe".format(
                 this.get_bot_token()))
         return _api_response.json().get("result").get("username")
+
+    def is_valid_token(this, token = str) -> bool:
+        _api_response = httpx_get(
+            "https://api.telegram.org/bot{}/getMe".format(token))
+        return _api_response.json().get("result").get("ok")
 
     def get_bot_id(this) -> int:
 

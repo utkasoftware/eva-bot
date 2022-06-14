@@ -5,12 +5,23 @@
 
 from sys import version_info, setprofile
 from os import environ
+from argparse import ArgumentParser
 
 
-__dev_mode = environ.get("BOT_DEV_MODE", "False").lower() in ("true", "1", "t")
-if __dev_mode:
-    from .tests import traceit
+parser = ArgumentParser(description="Eva optional run args", prog=__package__)
 
+parser.add_argument("--dev",
+    action="store_true", help="Dev mode: enable VERBOSE logging")
+parser.add_argument("-l", "--log", help="Logging level", dest="log_level", required=False)
+# parser.add_argument("-t", "--token", help="Bot token", dest="token", required=False)
+# parser.add_argument("-a", "--admin", dest="admin_id", default=0, type=int)
+
+opt_args = parser.parse_args()
+
+dev_mode = environ.get("BOT_DEV_MODE", "False").lower() in ("true", "1", "t")
+if dev_mode or opt_args.dev: 
+
+    from eva.tests import traceit
     setprofile(traceit.tracefunc)
 
 
@@ -29,4 +40,4 @@ else:
             raise
         else:
             if __name__ == "__main__":
-                eva.start()
+                eva.start(opt_args)

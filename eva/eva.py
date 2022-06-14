@@ -5,6 +5,9 @@
 
 import asyncio
 
+import coloredlogs
+logging = coloredlogs.logging
+
 from markupsafe import escape
 
 from telethon import TelegramClient, events  # type: ignore
@@ -18,11 +21,12 @@ from telethon.errors.rpcerrorlist import ChannelPrivateError
 from telethon.errors.rpcerrorlist import ChatAdminRequiredError
 from telethon.errors.rpcerrorlist import ChatIdInvalidError
 
-from . import utils
-from .controller import BotSecurity, UserStatesControl
-from .structs import Captcha
-from .wrappers import CaptchaWrapper
-from .langs.languages import Language
+from eva import BotSecurity
+from eva import UserStatesControl
+from eva import Captcha
+from eva import CaptchaWrapper
+from eva import Language
+from eva import utils
 
 Usc = UserStatesControl()
 States = Usc.states
@@ -34,21 +38,12 @@ BotConfig = BotDB.BotConfigExtended
 # Locale Language
 LL = Language.load("ru")
 
-BotDB.create()
+CaptchaWrapper = CaptchaWrapper()
 
 captcha_settings = BotConfig.get_captcha_settings()
 api_id, api_hash = BotConfig.get_api_params()
-BOT_TOKEN = BotConfig.get_bot_token()
 
-bot = TelegramClient("mainbot", api_id, api_hash, flood_sleep_threshold=30).start(
-    bot_token=BOT_TOKEN
-)
-del BOT_TOKEN
-bot.parse_mode = "html"
-
-print("Started for {}".format(BotSecurity.bot_id))
-print()
-print("Admin ID: {}".format(BotConfig.get_owner_id()))
+bot = TelegramClient("main", api_id, api_hash, flood_sleep_threshold=30)
 
 
 @bot.on(events.NewMessage(incoming=True, forwards=False))
@@ -88,25 +83,22 @@ async def all_handler(event: Message) -> None:
                     await bot.send_message(event.sender.id, LL.incorrect_answer)
                     return
 
-            captcha: Captcha = await BotDB.solve_captcha(
+            captcha = await BotDB.solve_captcha(
                 user_id=event.sender.id, text=answer
             )
 
             if captcha.found:
 
                 if captcha.expired:
+
+                    new_captcha = CaptchaWrapper.generate(*captcha_settings)
                     await bot.send_message(
                         event.sender.id,
                         LL.captcha_code_expired,
                     )
-                    new_captcha = await CaptchaWrapper().generate(*captcha_settings)
-                    await BotDB.refresh_captcha(
-                        user_id=event.sender.id,
-                        expired_text=captcha.text,
-                        new_text=new_captcha.text,
-                    )
-                    await bot.send_file(
-                        event.sender.id,
+
+                    await BotDB.refresh_captcha(id=captcha.id, new_text=new_captcha.text)
+                    await bot.send_file(event.sender.id,
                         file=new_captcha.image,
                         caption=LL.captcha_wait_for_answer,
                     )
@@ -178,7 +170,7 @@ async def callback_handler(event):
     user_id = int(event.query.user_id)
     if action == "j":
         chat_id = decoded_data[1:]
-        _captcha = await CaptchaWrapper().generate(*captcha_settings)
+        _captcha = CaptchaWrapper.generate(*captcha_settings)
 
         await BotDB.add_captcha(user_id=user_id, text=_captcha.text, chat_id=chat_id)
         await event.edit(LL.enter_image_text)
@@ -214,7 +206,6 @@ async def callback_handler(event):
 @bot.on(events.ChatAction)
 async def new_add_greetings(event: Message) -> None:
 
-    # Нас добавили ^____^
     if event.user_added:
         if BotSecurity.bot_id in event.action_message.action.users:
             await bot.send_message(event.chat, LL.start_text)
@@ -245,8 +236,6 @@ async def eve_init_cmd(event: Message) -> None:
         else False
     )
 
-    # slowmode = event.chat.slowmode_enabled
-    # noforwards = event.chat.noforwards
     wait_msg = await bot.send_message(event.chat.id, LL.initializing)
     await asyncio.sleep(1)
     wait_msg = await bot.edit_message(wait_msg, LL.loading_data)
@@ -336,7 +325,7 @@ async def connect_cmd(event: Message) -> None:
                 event.forward.from_id.channel_id,
                 LL.log_channel_added_post.format(escape(event.chat.title)),
             )
-        except ChannelPrivateError as e:
+        except ChannelPrivateError:
             await event.respond(LL.log_channel_add_error)
             return
         except ChatAdminRequiredError:
@@ -357,6 +346,10 @@ async def connect_cmd(event: Message) -> None:
 @Usc.START
 async def start_cmd(event: Message) -> None:
 
+    deeplink_args = utils.get_message_args(event.message)
+    if deeplink_args and deeplink_args[0] == "help":
+        await send_help(event)
+        return
     await event.respond(LL.start_text)
     await utils.log_event(event, "/start")
 
@@ -453,12 +446,12 @@ async def join_cmd(event: Message) -> None:
             else:
                 chat_returned = await bot(GetChatsRequest(id=[chat]))
             chats_info.append(chat_returned.chats[0])
-        except Exception:
+        except:
             pass  # FIXME
 
     buttons = []
     for c in chats_info:
-        # был пьян
+
         buttons.append(
             [
                 Button.inline(
@@ -514,7 +507,7 @@ async def send_help(event: Message) -> None:
                 [
                     Button.url(
                         LL.help_btn_text,
-                        "https://t.me/{}".format(BotSecurity.bot_username),
+                        "https://t.me/{}?start=help".format(BotSecurity.bot_username),
                     )
                 ]
             ],
@@ -536,11 +529,8 @@ async def join_requests_handler(event: Message) -> None:
     )
 
     log_channel_id = await BotDB.get_log_channel(_chat_id)
-    # ca_stopped = await BotDB.chat_ca_handle_status(_chat_id)
-    # if ca_stopped:
-    #     return
 
-    _captcha = await CaptchaWrapper().generate(*captcha_settings)
+    _captcha = CaptchaWrapper.generate(*captcha_settings)
     await BotDB.add_user(user_id=event.user.id, name=event.user.first_name)
     await BotDB.add_captcha(user_id=event.user_id, text=_captcha.text, chat_id=_chat_id)
 
@@ -570,13 +560,26 @@ async def join_requests_handler(event: Message) -> None:
 @Usc.WAIT_FOR_ANSWER
 async def renew_captcha_cmd(event: Message) -> None:
 
-    _captcha = await CaptchaWrapper().generate(*captcha_settings)
+    _captcha = CaptchaWrapper.generate(*captcha_settings)
 
     await BotDB.renew_captcha(user_id=event.sender.id, text=_captcha.text)
     await event.respond(LL.captcha_updated, file=_captcha.image)
     await utils.log_event(event, "/new")
 
 
-def start():
+def start(optional_args):
+
+    default_format = "%(asctime)s %(funcName)s::%(lineno)d %(levelname)s: %(message)s"
+    logger = logging.getLogger(__name__)
+    coloredlogs.install(level="INFO", fmt=default_format)
+
+    BotDB.create()
+    BOT_TOKEN = BotConfig.get_bot_token()
+
+    bot.start(bot_token=BOT_TOKEN)
+    bot.parse_mode = "html"
+
+    logger.info("Started for {}".format(BotSecurity.bot_id))
+    logger.info("Admin ID: {}".format(BotConfig.get_owner_id()))
 
     bot.run_until_disconnected()
