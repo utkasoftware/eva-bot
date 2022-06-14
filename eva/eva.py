@@ -346,6 +346,10 @@ async def connect_cmd(event: Message) -> None:
 @Usc.START
 async def start_cmd(event: Message) -> None:
 
+    deeplink_args = utils.get_message_args(event.message)
+    if deeplink_args and deeplink_args[0] == "help":
+        await send_help(event)
+        return
     await event.respond(LL.start_text)
     await utils.log_event(event, "/start")
 
@@ -503,7 +507,7 @@ async def send_help(event: Message) -> None:
                 [
                     Button.url(
                         LL.help_btn_text,
-                        "https://t.me/{}".format(BotSecurity.bot_username),
+                        "https://t.me/{}?start=help".format(BotSecurity.bot_username),
                     )
                 ]
             ],
@@ -565,8 +569,8 @@ async def renew_captcha_cmd(event: Message) -> None:
 
 def start(optional_args):
 
-    default_format = "%(asctime)s %(funcName)s::%(lineno)d.%(levelname)s: %(message)s"
-    logger = logging.getLogger()
+    default_format = "%(asctime)s %(funcName)s::%(lineno)d %(levelname)s: %(message)s"
+    logger = logging.getLogger(__name__)
     coloredlogs.install(level="INFO", fmt=default_format)
 
     BotDB.create()
@@ -577,4 +581,5 @@ def start(optional_args):
 
     logger.info("Started for {}".format(BotSecurity.bot_id))
     logger.info("Admin ID: {}".format(BotConfig.get_owner_id()))
+
     bot.run_until_disconnected()
