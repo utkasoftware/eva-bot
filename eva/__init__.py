@@ -7,4 +7,3 @@ from . import utils
 from .controller import BotSecurity, UserStatesControl
 from .structs import Captcha
 from .wrappers import CaptchaWrapper
-from .langs.languages import Language

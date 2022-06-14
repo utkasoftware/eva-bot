@@ -92,3 +92,7 @@ Missing "DATABASE_URL" env var or "config.ini" file')
     def get_spamwatch_token(this) -> str:
 
         return this.config.get("spamwatch", "token")
+
+    def get_default_language(this) -> str:
+
+        return this.config.get("languages", "default")

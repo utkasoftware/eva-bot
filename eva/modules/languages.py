@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+
 from typing import NoReturn
 import json
 
+from eva.modules import logger
 
 class Language:
 
@@ -27,7 +29,7 @@ class Language:
                     lang_json = json.load(raw_json)
 
             except FileNotFoundError:
-                print(
+                logger.warn(
                     "Language file {} not found; loading default file".format(
                         language_name
                     )
@@ -37,7 +39,7 @@ class Language:
                     lang_json = json.load(raw_json)
 
             except json.decoder.JSONDecodeError:
-                print(
+                logger.fatal(
                     "Something went wrong with language file {}".format(language_name)
                 )
                 raise
