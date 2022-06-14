@@ -5,9 +5,6 @@
 
 import asyncio
 
-import coloredlogs
-logging = coloredlogs.logging
-
 from markupsafe import escape
 
 from telethon import TelegramClient, events  # type: ignore
@@ -25,7 +22,8 @@ from eva import BotSecurity
 from eva import UserStatesControl
 from eva import Captcha
 from eva import CaptchaWrapper
-from eva import Language
+from eva.modules import Language
+from eva.modules import logger
 from eva import utils
 
 Usc = UserStatesControl()
@@ -36,7 +34,7 @@ BotDB = BotSecurity.DatabaseWrapperExtended
 BotConfig = BotDB.BotConfigExtended
 
 # Locale Language
-LL = Language.load("ru")
+LL = Language.load(BotConfig.get_default_language())
 
 CaptchaWrapper = CaptchaWrapper()
 
@@ -568,10 +566,6 @@ async def renew_captcha_cmd(event: Message) -> None:
 
 
 def start(optional_args):
-
-    default_format = "%(asctime)s %(funcName)s::%(lineno)d %(levelname)s: %(message)s"
-    logger = logging.getLogger(__name__)
-    coloredlogs.install(level="INFO", fmt=default_format)
 
     BotDB.create()
     BOT_TOKEN = BotConfig.get_bot_token()
