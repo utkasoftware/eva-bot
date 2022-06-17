@@ -1,5 +1,8 @@
 # Eva 
 [![Telegram - Bot](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/storoxbot)  
+
+[![Docs Language](https://img.shields.io/badge/Docs Language-RU-blue)]
+
 Telegram bot that checks users who sent join requests to private groups and channels using captcha.  
 Send `/feedback` command to [@storoxbot](https://t.me/storoxbot) to get support.
 
@@ -8,11 +11,11 @@ Send `/feedback` command to [@storoxbot](https://t.me/storoxbot) to get support.
 
 1. Clone this repo:  
 ```git clone https://github.com/utkasoftware/eva-bot && cd eva-bot```
-2. Install postgresql and create database for Eva.
-3. Go to `cd eva/configs` then rename `mv {example.,}config.ini` config file and fill it in.
+
+2. Install postgresql and create database for Eva. [Installation guide](https://www.postgresqltutorial.com/postgresql-getting-started/install-postgresql-linux/)
+3. Rename `mv {example.,}config.ini` config file and fill it in. You need bot token from [@BotFather][https://t.me/BotFather] and API ID & HASH from [Telegram](https://my.telegram.org/auth)
 4. Run Eva:  
-```cd - && python -m eva```  
-You may use `screen` or `nohup` to run Eva on VDS.
+```python -m eva```
 
 ## Contributing
 <details>
@@ -30,3 +33,9 @@ We know that our code might be not clean enough, but we don't want to merge, vie
 #### We use ```this``` instead of ```self```
 Do not ask why, it's too a long story.
 </details>
+
+
+#### todo
+See [issues/todo-list](https://github.com/utkasoftware/eva-bot/issues/11)
+
+

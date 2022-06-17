@@ -7,14 +7,13 @@ from datetime import datetime
 from psycopg2 import sql, connect
 
 
-from ..structs import Captcha
-from ..structs import Message
-from ..configs import BotConfig
-from ..utils import is_anon
+from eva.structs import Captcha
+from eva.structs import Message
+from eva.configs import BotConfig
+from eva.utils import is_anon
 
 
 class DatabaseWrapper:
-
     def __init__(this) -> None:
 
         # Will import this in eva.py
@@ -121,11 +120,7 @@ class DatabaseWrapper:
             else data.chat.title
         )
 
-        domain = (
-            data.chat.username
-            if data.chat.username is not None
-            else "none"
-        )
+        domain = data.chat.username if data.chat.username is not None else "none"
         is_mega = data.chat.megagroup
         is_admin = bool(data.chat.admin_rights)
 
@@ -142,14 +137,16 @@ class DatabaseWrapper:
                 DO UPDATE
                     SET
                         (domain, name, is_mega, is_admin) = (excluded.domain, excluded.name, excluded.is_mega, excluded.is_admin)
-                """), {
-                    "in_chat_id": chat_id,
-                    "in_name": title,
-                    "in_domain": domain,
-                    "in_is_mega": is_mega,
-                    "in_is_admin": is_admin
-                }
-            )
+                """
+            ),
+            {
+                "in_chat_id": chat_id,
+                "in_name": title,
+                "in_domain": domain,
+                "in_is_mega": is_mega,
+                "in_is_admin": is_admin,
+            },
+        )
 
         this.con.commit()
 
@@ -171,11 +168,7 @@ class DatabaseWrapper:
             else data.sender.first_name
         )
 
-        domain = (
-            data.sender.username
-            if data.sender.username is not None
-            else "none"
-        )
+        domain = data.sender.username if data.sender.username is not None else "none"
         if user_id == data.chat.id:
             cur.execute(
                 sql.SQL(
@@ -204,9 +197,7 @@ class DatabaseWrapper:
 
             if hasattr(data.chat, "username"):
                 chat_domain = (
-                    data.chat.username
-                    if data.chat.username is not None
-                    else "none"
+                    data.chat.username if data.chat.username is not None else "none"
                 )
             else:
                 chat_domain = "none"
@@ -264,14 +255,6 @@ class DatabaseWrapper:
             )
 
         this.con.commit()
-
-        # FIXME please
-        logged_ = " {} (id{}, {}) saved. ".format(name, user_id, domain)
-        if data.message.text is not None:
-            logged_ += ":-> {}".format(data.message.text[:16])
-        if data.chat.id != data.sender.id:
-            logged_ = "chatid::{}".format(data.chat.id) + logged_
-        print(logged_)
 
     async def set_log_channel(this, chat_id: int, channel_id: int) -> None:
 
@@ -351,7 +334,7 @@ class DatabaseWrapper:
     async def add_captcha(this, user_id: int, text: str, chat_id: int) -> None:
 
         cur = this.con.cursor()
-        
+
         """
         First delete old pending captcha
 
@@ -414,7 +397,7 @@ class DatabaseWrapper:
             )
             row = cur.fetchone()
         except Exception as e:
-            ret_captcha.error = True,
+            ret_captcha.error = (True,)
             ret_captcha.error_msg = str(e)
             return ret_captcha
 
@@ -621,8 +604,6 @@ class DatabaseWrapper:
             {"cid": chat_id},
         )
         this.con.commit()
-
-
 
     """
     # todo Functions not yet implemented in the bot main code

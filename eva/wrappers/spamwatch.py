@@ -8,7 +8,6 @@ from ..configs import BotConfig
 
 
 class SpamwatchWrapper:
-
     def __init__(this, token: str = BotConfig().get_spamwatch_token()):
 
         this.token = token
@@ -19,11 +18,10 @@ class SpamwatchWrapper:
         """
 
         async with AsyncClient(
-                headers={'Authorization':
-                         'Bearer ' + this.token}, timeout=5) as c:
+            headers={"Authorization": "Bearer " + this.token}, timeout=5
+        ) as c:
             try:
-                response = await c.get("https://api.spamwat.ch/banlist/" +
-                                       str(user_id))
+                response = await c.get("https://api.spamwat.ch/banlist/" + str(user_id))
             except TimeoutException:
                 # слишком долго ждем api, юзер технически проходит
                 return True
@@ -33,11 +31,12 @@ class SpamwatchWrapper:
         return False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import asyncio
-    token = input('SW Token: ')
+
+    token = input("SW Token: ")
     sw = SpamwatchWrapper(token)
     loop = asyncio.new_event_loop()
     while True:
-        user_id = int(input('User Id: '))
+        user_id = int(input("User Id: "))
         print(loop.run_until_complete(sw.check(user_id)))

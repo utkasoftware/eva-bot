@@ -1,0 +1,30 @@
+{
+ "name": "Eva Captcha Bot",
+ "description": "Telegram bot to check users with captcha after sending join requests to private chats and channels.",
+ "repository": "https://github.com/utkasoftware/eva-bot",
+ "logo": "",
+ "keywords": ["telegram", "telegram-bot", "bot", "captcha", "captcha-bot"],
+ "env": {
+  "BOT_TOKEN": {
+      "description": "Your Bot token from @Botfather",
+      "value": ""
+   },
+   "DATABASE_URL": {
+       "description": "Your Postgres connect URL",
+       "value": ""
+   },
+   "API_ID": {
+      "description": "Your API_ID from https://my.telegram.org/apps",
+      "value": ""
+   },
+   "API_HASH": {
+      "description": "Your API_HASH from https://my.telegram.org/apps",
+      "value": ""
+   }
+ },
+ "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+ ]
+}

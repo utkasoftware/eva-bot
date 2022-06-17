@@ -6,7 +6,7 @@
 from random import choice
 from captcha.image import ImageCaptcha
 
-from ..structs import Captcha
+from eva.structs import Captcha
 
 
 class CaptchaWrapper:
@@ -84,9 +84,7 @@ class CaptchaWrapper:
 
         this.Captcha = Captcha
 
-    def generate(
-        this, length: int = 5, width: int = 250, height: int = 180
-    ) -> Captcha:
+    def generate(this, length: int = 5, width: int = 250, height: int = 180) -> Captcha:
 
         text = []
         for i in range(length):

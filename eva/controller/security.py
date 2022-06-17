@@ -7,13 +7,12 @@ from functools import wraps
 from datetime import datetime
 from telethon.events import StopPropagation
 
-from ..wrappers import DatabaseWrapper
-from ..structs import States
-from .. import utils
+from eva.wrappers import DatabaseWrapper
+from eva.structs import States
+from eva import utils
 
 
 class BotSecurity:
-
     def __init__(this) -> None:
 
         # DatabaseWrapper <- BotConfig
@@ -29,13 +28,11 @@ class BotSecurity:
         this.db_wrapper = this.DatabaseWrapperExtended
 
     def is_admin(this, user_id: int) -> bool:
-
+        """! Bot admin, not chat or channel"""
         return this.db_wrapper.is_user_admin(user_id)
 
     def is_owner(this, user_id: int) -> bool:
-
         return this.owner_id == user_id
-
 
     """
     Main decorators
@@ -82,14 +79,11 @@ class BotSecurity:
 
         return wrapper
 
-
-
     def limiter(
         this,
         only_private_groups: bool = False,
         only_private: bool = False,
         no_private: bool = False,
-        cmd_disabled: bool = False,
         use_limiter: bool = True,
         anonymous: bool = False,
         cooldown: int = None,
@@ -98,6 +92,7 @@ class BotSecurity:
         # @todo Refactor me please
 
         """
+
         def pseudo_decor(event_function: Callable) -> Callable:
             @wraps(event_function)
             async def wrapper(*events, **kwargs):
@@ -105,40 +100,31 @@ class BotSecurity:
                 todo refactor that if-else hell
 
                 """
-
                 data = events[0]
-                nonlocal anonymous # temp fix
-                if utils.is_private(data) and anonymous:
-                    anonymous = False
-                if not utils.is_anon(data) and anonymous:
-                    anonymous = False
-                """ Ignoring other bots commands """
-                if not utils.is_my_cmd(data.message, this.bot_username):
+                nonlocal anonymous  # temp fix
+
+                """ Ignoring other bots commands and channel posts """
+                if not utils.is_my_cmd(
+                    data.message, this.bot_username
+                ) or utils.is_channel(data):
                     return False
 
-                if utils.is_channel(data):
-                    # Ignore channels
-                    return False
+                if all([utils.is_private(data), anonymous]) or all(
+                    [not utils.is_anon(data), anonymous]
+                ):
+                    anonymous = False
 
-                if utils.is_anon(data) and anonymous:
-
-                    if only_private:
-                        return False
-                    if only_private_groups and not utils.is_private(
-                        data, group=True
+                if all([utils.is_anon(data), anonymous]):
+                    if only_private or (
+                        only_private_groups and not utils.is_private(data, group=True)
                     ):
                         return False
-
                     chat_id = data.peer_id.channel_id
 
                 elif utils.is_anon(data) and not anonymous:
                     return False
                 else:
                     user_id = data.sender.id
-
-                cd = cooldown
-                if cmd_disabled:
-                    return False
 
                 if all([only_private, no_private]) or all(
                     [only_private, only_private_groups]
@@ -148,26 +134,21 @@ class BotSecurity:
 Please do not use several opposite params (i.e., \
 "only_private" and "no_private") at the same time.'
                     )
-                if only_private_groups and not utils.is_private(
-                    data, group=True
-                ):
+                if only_private_groups and not utils.is_private(data, group=True):
                     return False
-                elif only_private and not utils.is_private(data):
+                if only_private and not utils.is_private(data):
                     return False
-                elif no_private and utils.is_private(data):
+                if no_private and utils.is_private(data):
                     return False
 
+                cd = cooldown
                 if not cd:
                     cd = this.db_wrapper.cooldown
 
                 if anonymous:
-                    chat_limits: list = this.db_wrapper.get_chat_limits(
-                        chat_id
-                    )
+                    chat_limits: list = this.db_wrapper.get_chat_limits(chat_id)
                 else:
-                    user_limits: list = this.db_wrapper.get_user_limits(
-                        user_id
-                    )
+                    user_limits: list = this.db_wrapper.get_user_limits(user_id)
 
                 if anonymous:
 
@@ -178,19 +159,12 @@ Please do not use several opposite params (i.e., \
                         if not last_action and not blocked:
                             await event_function(*events, **kwargs)
                             if use_limiter:
-                                this.db_wrapper.update_chat_limiter(
-                                    chat_id
-                                )
+                                this.db_wrapper.update_chat_limiter(chat_id)
                             raise StopPropagation
-                        if (
-                            now - int(last_action.timestamp()) > cd
-                            and not blocked
-                        ):
+                        if now - int(last_action.timestamp()) > cd and not blocked:
                             await event_function(*events, **kwargs)
                             if use_limiter:
-                                this.db_wrapper.update_chat_limiter(
-                                    chat_id
-                                )
+                                this.db_wrapper.update_chat_limiter(chat_id)
                             raise StopPropagation
                         print(
                             "** id{} has ignored:: \
@@ -216,10 +190,7 @@ anonymous admin is banned cooldown has not expired".format(
                         if use_limiter:
                             this.db_wrapper.update_limiter(user_id)
                         raise StopPropagation
-                    if (
-                        now - int(last_request.timestamp()) > cd
-                        and not blocked
-                    ):
+                    if now - int(last_request.timestamp()) > cd and not blocked:
                         await event_function(*events, **kwargs)
                         if use_limiter:
                             this.db_wrapper.update_limiter(user_id)
