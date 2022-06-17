@@ -1,6 +1,5 @@
 # Eva 
-[![Telegram - Bot](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/storoxbot)  
-
+[![Telegram - Bot](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/storoxbot)
 ![Docs Language](https://img.shields.io/badge/Docs%20Language-RU-blue)
 
 Telegram bot that checks users who sent join requests to private groups and channels using captcha.  
@@ -33,7 +32,6 @@ We know that our code might be not clean enough, but we don't want to merge, vie
 #### We use ```this``` instead of ```self```
 Do not ask why, it's too a long story.
 </details>
-
 
 #### todo
 See [issues/todo-list](https://github.com/utkasoftware/eva-bot/issues/11)
