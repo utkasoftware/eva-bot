@@ -29,4 +29,4 @@ We know that our code might be not clean enough, but we don't want to merge, vie
 
 #### We use ```this``` instead of ```self```
 Do not ask why, it's too a long story.
-<details/>
+</details>
