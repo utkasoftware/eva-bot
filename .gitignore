@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # Bot
-eva/configs/config.ini
+config.ini
 eva/wrappers/*test.py
 eva/tracelogs/
 *.session

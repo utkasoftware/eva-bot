@@ -1,4 +1,3 @@
-# cython: language_level=3
 # -*- coding: utf-8 -*-
 # © Uli Sotschok, 2019
 # https://stackoverflow.com/a/57620899
@@ -11,8 +10,8 @@ import json
 
 from eva.modules import logger
 
-class Language:
 
+class Language:
     def __init__(this, lang_dict: dict) -> None:
 
         this.lang_dict = lang_dict

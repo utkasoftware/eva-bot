@@ -13,3 +13,4 @@ class User:
     username: str = str()
     first_name: str = str()
     bio: str = str()
+    blocked: bool = False
