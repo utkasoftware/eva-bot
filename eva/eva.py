@@ -470,7 +470,7 @@ async def join_cmd(event: Message) -> None:
             [
                 Button.inline(
                     escape(c.title if len(c.title) < 8 else c.title[:8] + ".."),
-                    bytes("j{}".format(c.id), encoding="utf-8"),
+                    bytes("j" + str(c.id), encoding="utf-8"),
                 )
             ]
         )
@@ -504,23 +504,22 @@ async def send_help(event: Message) -> None:
             event.chat,
             file="https://i.imgur.com/A5loMYy_d.jpg?maxwidth=4096",
             caption=LL.help_text,
+            buttons=Button.url(
+                LL.help_add_to_group,
+                "https://t.me/{}?startgroup=start&admin=invite_users"
+                .format(BotSecurity.bot_username))
         )
-        await utils.log_event(event, "/help")
     else:
         await bot.send_message(
             entity=event.chat.id,
             reply_to=event.message.id,
             message=LL.help_go_pm,
-            buttons=[
-                [
-                    Button.url(
-                        LL.help_btn_text,
-                        "https://t.me/{}?start=help".format(BotSecurity.bot_username),
-                    )
-                ]
-            ],
+            buttons=Button.url(
+                LL.help_btn_text,
+                "https://t.me/{}?start=help"
+                .format(BotSecurity.bot_username)),
         )
-        await utils.log_event(event, "/help")
+    await utils.log_event(event, "/help")
 
 
 @bot.on(events.ChatAction(func=lambda e: e.new_join_request))
