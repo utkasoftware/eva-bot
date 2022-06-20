@@ -9,6 +9,7 @@ from psycopg2 import sql, connect
 
 from eva.structs import Captcha
 from eva.structs import Message
+from eva.structs import User
 from eva.configs import BotConfig
 from eva.utils import is_anon
 
@@ -40,8 +41,8 @@ class DatabaseWrapper:
             """
             CREATE TABLE IF NOT EXISTS users_stats
                 (user_id BIGINT PRIMARY KEY NOT NULL,
-                domain CHAR(64),
-                name CHAR(64),
+                domain VARCHAR(64),
+                name VARCHAR(64),
                 last_req TIMESTAMP,
                 state INT NOT NULL DEFAULT 0,
                 state_for_chat BIGINT,
@@ -56,8 +57,8 @@ class DatabaseWrapper:
             """
             CREATE TABLE IF NOT EXISTS chats_stats
                 (chat_id BIGINT PRIMARY KEY NOT NULL,
-                domain CHAR(64),
-                name CHAR(64),
+                domain VARCHAR(64),
+                name VARCHAR(64),
                 is_mega BOOLEAN,
                 last_act TIMESTAMP,
                 log_channel BIGINT,
@@ -698,6 +699,14 @@ class DatabaseWrapper:
         rows = list(rows)
         return len(rows)
 
+    def get_all_users(this) -> list[int]:
+        cur = this.con.cursor()
+        cur.execute(
+            """SELECT user_id FROM users_stats""")
+        rows = cur.fetchall()
+        users = [user[0] for user in rows]
+        return users
+
     def get_user_chats(this, user_id: int) -> list[int]:
         cur = this.con.cursor()
         cur.execute(
@@ -719,7 +728,7 @@ class DatabaseWrapper:
         else:
             return row[0]
 
-    def get_user(this, user_id: int) -> list[str]:
+    def get_user(this, user_id: int) -> list[User | None]:
         cur = this.con.cursor()
         cur.execute(
             """
@@ -738,14 +747,15 @@ class DatabaseWrapper:
         row = list(row)
         """
             Removing unnecessary whitespaces,
-            because table columns are in the CHAR64 format
+            because table columns are in the CHAR64(deprecated) format
         """
         for i in range(0, len(row)):
             try:
                 row[i] = row[i].strip()
             except Exception:
                 pass
-        return row
+        user = User(*row)
+        return user
 
     def update_limiter(this, user_id: int) -> None:
 
