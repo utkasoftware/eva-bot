@@ -17,6 +17,7 @@ from telethon.tl.functions.messages import GetChatsRequest
 from telethon.errors.rpcerrorlist import ChannelPrivateError
 from telethon.errors.rpcerrorlist import ChatAdminRequiredError
 from telethon.errors.rpcerrorlist import ChatIdInvalidError
+from telethon.errors.rpcerrorlist import FloodWaitError
 
 from eva import BotSecurity
 from eva import UserStatesControl
@@ -214,6 +215,41 @@ async def new_add_greetings(event: Message) -> None:
             event.chat,
             LL.promote_me_please,
         )
+
+@bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"/massmail"))
+@BotSecurity.owner
+async def rassmail_cmd(event):
+
+    if mail_text := utils.get_message_args(event.message):
+        mail_text = " ".join(mail_text)
+    else:
+        await event.respond("Nothing to mail.")
+        return
+
+    users = BotDB.get_all_users()
+    sending_msg = await event.respond("Sending...")
+    ok_count = 0
+    error_count = 0
+    for user_id in users:
+        logger.info("Sending to.. {}".format(user_id))
+        try:
+            await asyncio.sleep(2)
+            await bot.send_message(user_id, mail_text)
+        except FloodWaitError as e:
+            error_count += 1
+            logger.fatal(
+                "Got FloodWaitError. Sleeping... {}s".format(e.seconds))
+            asyncio.sleep(e.seconds)
+        except Exception as e:
+            error_count += 1
+            logger.fatal("Error: {}".format(e))
+        else:
+            ok_count += 1
+            logger.info("OK")
+
+    await bot.edit_messages(
+        sending_msg,
+        "Done.\nOK: {}\nErrors: {}".format(ok_count, error_count))
 
 
 @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"(/)feedback"))
