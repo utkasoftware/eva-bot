@@ -132,6 +132,7 @@ dmypy.json
 config.ini
 eva/wrappers/*test.py
 eva/tracelogs/
+eva/tests/test_*
 *.session
 *.session-journal
 *.log
