@@ -279,7 +279,7 @@ async def eve_init_cmd(event: Message) -> None:
         await asyncio.sleep(1)
         await bot.send_message(
             event.chat,
-            file="https://i.imgur.com/d04WkmW.gif",
+            file="https://raw.githubusercontent.com/utkasoftware/eva-bot/master/assets/error.gif",
             message=LL.public_group_bye,
         )
         await asyncio.sleep(2)
@@ -502,7 +502,7 @@ async def send_help(event: Message) -> None:
     if utils.is_private(event):
         await bot.send_file(
             event.chat,
-            file="https://i.imgur.com/A5loMYy_d.jpg?maxwidth=4096",
+            file="https://raw.githubusercontent.com/utkasoftware/eva-bot/master/assets/help_banner.jpg",
             caption=LL.help_text,
         )
         await utils.log_event(event, "/help")
