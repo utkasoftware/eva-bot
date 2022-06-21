@@ -14,9 +14,9 @@ class User:
     username: str = str()
     first_name: str = str()
     last_request: datetime = datetime
-    blocked: bool = False
     state: int = int()
     state_for_chat: int = int()
+    blocked: bool = False
     admin: bool = False
     in_chats: list[int] = field(default_factory=[int])
     pm_started: bool = False
