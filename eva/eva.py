@@ -19,19 +19,31 @@ from telethon.errors.rpcerrorlist import ChatAdminRequiredError
 from telethon.errors.rpcerrorlist import ChatIdInvalidError
 from telethon.errors.rpcerrorlist import FloodWaitError
 
-from eva import BotSecurity
-from eva import UserStatesControl
-from eva import CaptchaWrapper
+from eva import (
+    BotConfig,
+    BotSecurity,
+    UserStatesControl,
+    CaptchaWrapper,
+)
+
+from eva.wrappers import (
+    UserStorage,
+    ChatStorage,
+    CaptchaStorage,
+)
 from eva.modules import Language
 from eva.modules import logger
+from eva.structs import User
 from eva import utils
 
 Usc = UserStatesControl()
 States = Usc.states
 
 BotSecurity = BotSecurity()
-BotDB = BotSecurity.DatabaseWrapperExtended
-BotConfig = BotDB.BotConfigExtended
+BotConfig = BotConfig()
+UserStorage = UserStorage()
+ChatStorage = ChatStorage()
+CaptchaStorage = CaptchaStorage()
 
 # Local Language
 LL = Language.load(BotConfig.get_default_language())
@@ -53,7 +65,10 @@ async def all_handler(event: Message) -> None:
     """
 
     if not utils.is_channel(event):
-        await BotDB.save_user(event)
+        if not utils.is_anon(event) and utils.is_private(event):
+            await UserStorage.save_user(event)
+        else:
+            await ChatStorage.save_chat(event)
 
     if utils.is_private(event) and not event.message.text.startswith("/"):
 
@@ -81,7 +96,7 @@ async def all_handler(event: Message) -> None:
                     await bot.send_message(event.sender.id, LL.incorrect_answer)
                     return
 
-            captcha = await BotDB.solve_captcha(user_id=event.sender.id, text=answer)
+            captcha = await CaptchaStorage.solve_captcha(user_id=event.sender.id, text=answer)
 
             if captcha.found:
 
@@ -93,7 +108,7 @@ async def all_handler(event: Message) -> None:
                         LL.captcha_code_expired,
                     )
 
-                    await BotDB.refresh_captcha(
+                    await CaptchaStorage.refresh_captcha(
                         id=captcha.id, new_text=new_captcha.text
                     )
                     await bot.send_file(
@@ -105,7 +120,7 @@ async def all_handler(event: Message) -> None:
 
                 try:
 
-                    log_channel_id = await BotDB.get_log_channel(captcha.for_chat)
+                    log_channel_id = await ChatStorage.get_log_channel(captcha.for_chat)
                     await bot(
                         HideChatJoinRequestRequest(
                             peer=captcha.for_chat,
@@ -132,7 +147,7 @@ async def all_handler(event: Message) -> None:
                         try:
                             await bot.send_message(log_channel_id, new_approve)
                         except ChannelPrivateError:
-                            await BotDB.set_log_channel(captcha.for_chat, 0)
+                            await ChatStorage.set_log_channel(captcha.for_chat, 0)
 
                 except BadRequestError:
                     await bot.send_message(
@@ -174,7 +189,7 @@ async def callback_handler(event):
         chat_id = decoded_data[1:]
         _captcha = CaptchaWrapper.generate(*captcha_settings)
 
-        await BotDB.add_captcha(user_id=user_id, text=_captcha.text, chat_id=chat_id)
+        await CaptchaStorage.add_captcha(user_id=user_id, text=_captcha.text, chat_id=chat_id)
         await event.edit(LL.enter_image_text)
         await bot.send_message(user_id, file=_captcha.image)
         await Usc.update(user_id, States.WAIT_FOR_ANSWER)
@@ -201,7 +216,7 @@ async def callback_handler(event):
             return
         else:
             await event.edit(LL.log_channel_added)
-            await BotDB.set_log_channel(chat_id, channel_id)
+            await ChatStorage.set_log_channel(chat_id, channel_id)
             return
 
 
@@ -222,11 +237,13 @@ async def rassmail_cmd(event):
 
     if mail_text := utils.get_message_args(event.message):
         mail_text = " ".join(mail_text)
+        # @todo
+        # mail_text += "\n\n- - -\n/unsubscribe отказаться от рассылки."
     else:
         await event.respond("Nothing to mail.")
         return
 
-    users = BotDB.get_all_users()
+    users = UserStorage.get_all_ids()
     sending_msg = await event.respond("Sending...")
     ok_count = 0
     error_count = 0
@@ -250,6 +267,15 @@ async def rassmail_cmd(event):
     await bot.edit_messages(
         sending_msg,
         "Done.\nOK: {}\nErrors: {}".format(ok_count, error_count))
+
+
+# @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"/unsubscribe"))
+# @BotSecurity.limiter(only_private=True)
+# @Usc.START
+async def unsubscribe_cmd(event: Message):
+
+    pass
+    # await event.respond("ОК, отписала Вас от рассылки.")
 
 
 @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"(/)feedback"))
@@ -368,7 +394,7 @@ async def connect_cmd(event: Message) -> None:
             return
         else:
             await event.respond(LL.log_channel_added)
-            await BotDB.set_log_channel(event.chat.id, event.forward.from_id.channel_id)
+            await ChatStorage.set_log_channel(event.chat.id, event.forward.from_id.channel_id)
             return
     else:
         await event.respond(LL.connect_forward_cmd)
@@ -412,7 +438,7 @@ async def cancel_cmd(event: Message) -> None:
 @Usc.START
 async def join_cmd(event: Message) -> None:
 
-    pending_chats = await BotDB.get_pending_chats(event.sender.id)
+    pending_chats = await CaptchaStorage.get_pending_chats_for(event.sender.id)
     please_wait = await event.respond(LL.loading_requests_list)
     await utils.log_event(event, "/join")
     if not pending_chats:
@@ -434,7 +460,7 @@ async def join_cmd(event: Message) -> None:
                 please_wait,
                 LL.error_im_kicked,
             )
-            await BotDB.delete_all_from_chat(chat_id=pending_chat_id)
+            await CaptchaStorage.delete_all_from_chat(chat_id=pending_chat_id)
             return
 
         chat_title = chat_info.chats[0].title
@@ -470,7 +496,7 @@ async def join_cmd(event: Message) -> None:
             [
                 Button.inline(
                     escape(c.title if len(c.title) < 8 else c.title[:8] + ".."),
-                    bytes("j" + str(c.id), encoding="utf-8"),
+                    bytes("j{}".format(c.id), encoding="utf-8"),
                 )
             ]
         )
@@ -535,11 +561,13 @@ async def join_requests_handler(event: Message) -> None:
         else int(str(event.chat_id)[4:])
     )
 
-    log_channel_id = await BotDB.get_log_channel(chat_id)
+    log_channel_id = await ChatStorage.get_log_channel(chat_id)
 
     captcha = CaptchaWrapper.generate(*captcha_settings)
-    await BotDB.add_user(user_id=event.user.id, name=event.user.first_name)
-    await BotDB.add_captcha(user_id=event.user_id, text=captcha.text, chat_id=chat_id)
+    await UserStorage.add_user(
+        User(id=event.user.id, first_name=event.user.first_name)
+    )
+    await CaptchaStorage.add_captcha(user_id=event.user_id, text=captcha.text, chat_id=chat_id)
 
     await bot.send_file(
         event.user_id,
@@ -564,7 +592,7 @@ async def join_requests_handler(event: Message) -> None:
             Нас кикнули или отобрали права на публикацию сообщений.
             Обнуляем поле с подключенным каналом
             """
-            await BotDB.set_log_channel(event.chat.id, 0)
+            await ChatStorage.set_log_channel(event.chat.id, 0)
 
 
 @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"(/)new"))
@@ -574,14 +602,13 @@ async def renew_captcha_cmd(event: Message) -> None:
 
     captcha = CaptchaWrapper.generate(*captcha_settings)
 
-    await BotDB.renew_captcha(user_id=event.sender.id, text=captcha.text)
+    await CaptchaStorage.renew_captcha(user_id=event.sender.id, text=captcha.text)
     await event.respond(LL.captcha_updated, file=captcha.image)
     await utils.log_event(event, "/new")
 
 
 def start(optional_args):
 
-    BotDB.create()
     BOT_TOKEN = BotConfig.get_bot_token()
 
     bot.start(bot_token=BOT_TOKEN)

@@ -7,8 +7,10 @@ from functools import wraps
 from datetime import datetime
 from telethon.events import StopPropagation
 
-from eva.wrappers import DatabaseWrapper
+from eva.configs import BotConfig
 from eva.structs import States
+from eva.wrappers import UserStorage
+from eva.wrappers import ChatStorage
 from eva import utils
 
 
@@ -18,18 +20,17 @@ class BotSecurity:
         # DatabaseWrapper <- BotConfig
         # BotSecurity <- DatabaseWrapper, BotConfig
         # eva.py <- BotSecurity, DatabaseWrapper, BotConfig
-        this.DatabaseWrapperExtended = DatabaseWrapper()
-        this.BotConfigExtended = this.DatabaseWrapperExtended.BotConfigExtended
+        this.user_storage = UserStorage()
+        this.chat_storage = ChatStorage()
+        this.bot_config = BotConfig()
 
-        this.bot_username = this.BotConfigExtended.get_bot_username()
-        this.bot_id = this.BotConfigExtended.get_bot_id()
-        this.owner_id = this.BotConfigExtended.get_owner_id()
-
-        this.db_wrapper = this.DatabaseWrapperExtended
+        this.bot_username = this.bot_config.get_bot_username()
+        this.bot_id = this.bot_config.get_bot_id()
+        this.owner_id = this.bot_config.get_owner_id()
 
     def is_admin(this, user_id: int) -> bool:
         """! Bot admin, not chat or channel"""
-        return this.db_wrapper.is_user_admin(user_id)
+        return this.user_storage.is_admin(user_id)
 
     def is_owner(this, user_id: int) -> bool:
         return this.owner_id == user_id
@@ -38,17 +39,6 @@ class BotSecurity:
     Main decorators
 
     """
-
-    def admins_deprecated(this, event_func: Callable) -> Callable:
-        async def wrapper(*events, **kwargs) -> None:
-            data = events[0]
-            user_id = data.sender.id
-            if this.db_wrapper.is_user_admin(user_id):
-                await event_func(*events, **kwargs)
-                return
-            return
-
-        return wrapper
 
     def admins(this, check_anon: bool = False) -> Callable:
         def pseudo_decor(event_func: Callable):
@@ -59,13 +49,11 @@ class BotSecurity:
                 if check_anon and utils.is_anon(data):
                     await event_func(*events, **kwargs)
                     return
-                if this.db_wrapper.is_user_admin(user_id):
+                if this.user_storage.is_admin(user_id):
                     await event_func(*events, **kwargs)
                     return
                 return
-
             return wrapper
-
         return pseudo_decor
 
     def owner(this, event_func: Callable) -> Callable:
@@ -143,12 +131,12 @@ Please do not use several opposite params (i.e., \
 
                 cd = cooldown
                 if not cd:
-                    cd = this.db_wrapper.cooldown
+                    cd = int(this.bot_config.get_limits("cd"))
 
                 if anonymous:
-                    chat_limits: list = this.db_wrapper.get_chat_limits(chat_id)
+                    chat_limits: list = await this.chat_storage.get_chat_limits(chat_id)
                 else:
-                    user_limits: list = this.db_wrapper.get_user_limits(user_id)
+                    user_limits: list = await this.user_storage.get_user_limits(user_id)
 
                 if anonymous:
 
@@ -159,12 +147,12 @@ Please do not use several opposite params (i.e., \
                         if not last_action and not blocked:
                             await event_function(*events, **kwargs)
                             if use_limiter:
-                                this.db_wrapper.update_chat_limiter(chat_id)
+                                await this.chat_storage.update_chat_limiter(chat_id)
                             raise StopPropagation
                         if now - int(last_action.timestamp()) > cd and not blocked:
                             await event_function(*events, **kwargs)
                             if use_limiter:
-                                this.db_wrapper.update_chat_limiter(chat_id)
+                                await this.chat_storage.update_chat_limits(chat_id)
                             raise StopPropagation
                         print(
                             "** id{} has ignored:: \
@@ -176,7 +164,7 @@ anonymous admin is banned cooldown has not expired".format(
                     else:
                         await event_function(*events, **kwargs)
                         if use_limiter:
-                            this.db_wrapper.update_chat_limiter(chat_id)
+                            await this.chat_storage.update_chat_limiter(chat_id)
                         raise StopPropagation
                     return
 
@@ -188,12 +176,12 @@ anonymous admin is banned cooldown has not expired".format(
                     if not last_request and not blocked:
                         await event_function(*events, **kwargs)
                         if use_limiter:
-                            this.db_wrapper.update_limiter(user_id)
+                            await this.user_storage.update_limits(user_id)
                         raise StopPropagation
                     if now - int(last_request.timestamp()) > cd and not blocked:
                         await event_function(*events, **kwargs)
                         if use_limiter:
-                            this.db_wrapper.update_limiter(user_id)
+                            await this.user_storage.update_limits(user_id)
                         raise StopPropagation
                     print(
                         "** id{} has ignored:: \
@@ -206,7 +194,7 @@ user is blocked or cooldown has not expired".format(
                 else:
                     await event_function(*events, **kwargs)
                     if use_limiter:
-                        this.db_wrapper.update_limiter(user_id)
+                        await this.user_storage.update_limits(user_id)
                     raise StopPropagation
                 return
 
@@ -224,25 +212,23 @@ class UserStatesControl:
 
     def __init__(this) -> None:
 
-        this.__DWExtended = DatabaseWrapper()
-        this.__db_wrapper = this.__DWExtended
-
+        this.user_storage = UserStorage()
         this.states = States
 
     async def __get_state(this, events) -> int:
 
         user_id = events[0].sender.id
-        user_state: int = await this.__db_wrapper.get_user_state(user_id)
+        user_state: int = await this.user_storage.get_user_state(user_id)
         return user_state
 
     async def update(this, user_id: int, new_state: States) -> None:
 
         value = new_state.value
-        await this.__db_wrapper.set_user_state(user_id, state_id=value)
+        await this.user_storage.set_user_state(user_id, state_id=value)
 
     async def get(this, user_id: int) -> int:
 
-        user_state: int = await this.__db_wrapper.get_user_state(user_id)
+        user_state: int = await this.user_storage.get_user_state(user_id)
         return user_state
 
     def ANY_NOT_IDLE(this, event_func: Callable) -> Callable:

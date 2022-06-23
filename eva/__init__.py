@@ -4,6 +4,7 @@
 #    2020-2022
 
 from . import utils
+from .configs import BotConfig
 from .controller import BotSecurity, UserStatesControl
 from .structs import Captcha
 from .wrappers import CaptchaWrapper
