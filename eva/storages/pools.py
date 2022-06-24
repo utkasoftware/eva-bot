@@ -1,4 +1,3 @@
-# cython: language_level=3
 # -*- coding: utf-8 -*-
 #    Eva Telegram Bot (https://t.me/storoxbot)
 #    2020-2022
@@ -10,6 +9,7 @@ from eva.configs import BotConfig
 class Pool:
 
     def __init__(this):
+
         params = BotConfig().get_connect_params()
         this.pool = pool.SimpleConnectionPool(
             1,

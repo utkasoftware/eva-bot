@@ -21,6 +21,7 @@ def tracefunc(frame, event, arg):
             x in frame.f_code.co_name for x in EXCLUSIONS
         ):
 
+            co_filename = "eva" + frame.f_code.co_filename.split("eva")[-1]
             if "self" in frame.f_locals:
                 class_name = frame.f_locals["self"].__class__.__name__
                 func_name = class_name + "." + frame.f_code.co_name
@@ -31,7 +32,7 @@ def tracefunc(frame, event, arg):
                 indent=tracefunc.stack_level * 2, name=func_name
             )
             txt = "{: <40} # {}, {}".format(
-                func_name, frame.f_code.co_filename, frame.f_lineno
+                func_name, co_filename, frame.f_lineno
             )
             print(txt)
 

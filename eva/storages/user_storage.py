@@ -6,7 +6,7 @@ from datetime import datetime
 from psycopg2 import sql
 
 from eva.structs import User
-from eva.wrappers import Storage
+from eva.storages import Storage
 
 
 class UserStorage(Storage):

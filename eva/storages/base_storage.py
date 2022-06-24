@@ -2,7 +2,8 @@
 #    Eva Telegram Bot (https://t.me/storoxbot)
 #    2020-2022
 
-from eva.wrappers import Pool
+from .pools import Pool
+from .singleton import Singleton
 
 pool = Pool()
 
@@ -13,7 +14,7 @@ class StorageException(Exception):
         this.errors = errors
 
 
-class Storage():
+class Storage(metaclass=Singleton):
 
     def __init__(this):
 
@@ -26,7 +27,6 @@ class Storage():
         return pool.get_connection()
 
     def complete_transaction(this):
-        """Complete Transaction"""
         try:
             this.con.commit()
         except Exception as e:

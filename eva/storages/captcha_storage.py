@@ -6,7 +6,7 @@ from datetime import datetime
 
 from eva.structs import User
 from eva.structs import Captcha
-from eva.wrappers import Storage
+from eva.storages import Storage
 
 class CaptchaStorage(Storage):
 

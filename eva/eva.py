@@ -26,7 +26,7 @@ from eva import (
     CaptchaWrapper,
 )
 
-from eva.wrappers import (
+from eva.storages import (
     UserStorage,
     ChatStorage,
     CaptchaStorage,
@@ -96,7 +96,9 @@ async def all_handler(event: Message) -> None:
                     await bot.send_message(event.sender.id, LL.incorrect_answer)
                     return
 
-            captcha = await CaptchaStorage.solve_captcha(user_id=event.sender.id, text=answer)
+            captcha = await CaptchaStorage.solve_captcha(
+                user_id=event.sender.id, text=answer
+            )
 
             if captcha.found:
 
@@ -176,6 +178,7 @@ async def callback_handler(event):
         Доступные действия:
             join    | j<chat_id:int>
             connect | c<chat_id:int>.<channel_id:int>
+            cancel
             ...
         Пример:
             'j1000000'
@@ -183,18 +186,26 @@ async def callback_handler(event):
     """
 
     decoded_data = event.data.decode("utf-8")
-    action = decoded_data[0]
+    action = decoded_data
     user_id = int(event.query.user_id)
-    if action == "j":
+
+    if action == "cancel":
+        await event.edit(LL.cancelled)
+        await Usc.update(user_id, States.START)
+        return
+
+    if action[0] == "j":
         chat_id = decoded_data[1:]
         _captcha = CaptchaWrapper.generate(*captcha_settings)
 
-        await CaptchaStorage.add_captcha(user_id=user_id, text=_captcha.text, chat_id=chat_id)
+        await CaptchaStorage.add_captcha(
+            user_id=user_id, text=_captcha.text, chat_id=chat_id
+        )
         await event.edit(LL.enter_image_text)
         await bot.send_message(user_id, file=_captcha.image)
         await Usc.update(user_id, States.WAIT_FOR_ANSWER)
 
-    if action == "c":
+    if action[0] == "c":
         chat_id = int(decoded_data[1:].split(".")[0])
         channel_id = int(decoded_data[1:].split(".")[1])
         if chat_id < 0:
@@ -231,6 +242,7 @@ async def new_add_greetings(event: Message) -> None:
             LL.promote_me_please,
         )
 
+
 @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"/massmail"))
 @BotSecurity.owner
 async def rassmail_cmd(event):
@@ -254,8 +266,7 @@ async def rassmail_cmd(event):
             await bot.send_message(user_id, mail_text)
         except FloodWaitError as e:
             error_count += 1
-            logger.fatal(
-                "Got FloodWaitError. Sleeping... {}s".format(e.seconds))
+            logger.fatal("Got FloodWaitError. Sleeping... {}s".format(e.seconds))
             asyncio.sleep(e.seconds)
         except Exception as e:
             error_count += 1
@@ -265,8 +276,8 @@ async def rassmail_cmd(event):
             logger.info("OK")
 
     await bot.edit_messages(
-        sending_msg,
-        "Done.\nOK: {}\nErrors: {}".format(ok_count, error_count))
+        sending_msg, "Done.\nOK: {}\nErrors: {}".format(ok_count, error_count)
+    )
 
 
 # @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"/unsubscribe"))
@@ -283,7 +294,11 @@ async def unsubscribe_cmd(event: Message):
 @Usc.START
 async def feedback_cmd(event: Message) -> None:
 
-    await bot.send_message(event.chat, LL.feedback_text)
+    await bot.send_message(event.chat,
+        LL.feedback_text,
+        link_preview=False,
+        buttons=[Button.inline("Отменить", bytes("cancel", encoding="utf-8"))]
+        )
     await Usc.update(event.chat.id, States.FEEDBACK_WAIT_FOR_ANSWER)
 
 
@@ -394,7 +409,9 @@ async def connect_cmd(event: Message) -> None:
             return
         else:
             await event.respond(LL.log_channel_added)
-            await ChatStorage.set_log_channel(event.chat.id, event.forward.from_id.channel_id)
+            await ChatStorage.set_log_channel(
+                event.chat.id, event.forward.from_id.channel_id
+            )
             return
     else:
         await event.respond(LL.connect_forward_cmd)
@@ -532,8 +549,10 @@ async def send_help(event: Message) -> None:
             caption=LL.help_text,
             buttons=Button.url(
                 LL.help_add_to_group,
-                "https://t.me/{}?startgroup=start&admin=invite_users"
-                .format(BotSecurity.bot_username))
+                "https://t.me/{}?startgroup=start&admin=invite_users".format(
+                    BotSecurity.bot_username
+                ),
+            ),
         )
     else:
         await bot.send_message(
@@ -542,8 +561,8 @@ async def send_help(event: Message) -> None:
             message=LL.help_go_pm,
             buttons=Button.url(
                 LL.help_btn_text,
-                "https://t.me/{}?start=help"
-                .format(BotSecurity.bot_username)),
+                "https://t.me/{}?start=help".format(BotSecurity.bot_username),
+            ),
         )
     await utils.log_event(event, "/help")
 
@@ -564,10 +583,10 @@ async def join_requests_handler(event: Message) -> None:
     log_channel_id = await ChatStorage.get_log_channel(chat_id)
 
     captcha = CaptchaWrapper.generate(*captcha_settings)
-    await UserStorage.add_user(
-        User(id=event.user.id, first_name=event.user.first_name)
+    await UserStorage.add_user(User(id=event.user.id, first_name=event.user.first_name))
+    await CaptchaStorage.add_captcha(
+        user_id=event.user_id, text=captcha.text, chat_id=chat_id
     )
-    await CaptchaStorage.add_captcha(user_id=event.user_id, text=captcha.text, chat_id=chat_id)
 
     await bot.send_file(
         event.user_id,

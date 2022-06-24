@@ -9,17 +9,14 @@ from telethon.events import StopPropagation
 
 from eva.configs import BotConfig
 from eva.structs import States
-from eva.wrappers import UserStorage
-from eva.wrappers import ChatStorage
+from eva.storages import UserStorage
+from eva.storages import ChatStorage
 from eva import utils
 
 
 class BotSecurity:
     def __init__(this) -> None:
 
-        # DatabaseWrapper <- BotConfig
-        # BotSecurity <- DatabaseWrapper, BotConfig
-        # eva.py <- BotSecurity, DatabaseWrapper, BotConfig
         this.user_storage = UserStorage()
         this.chat_storage = ChatStorage()
         this.bot_config = BotConfig()
