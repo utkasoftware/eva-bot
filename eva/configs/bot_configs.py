@@ -10,8 +10,11 @@ from configparser import ConfigParser
 from httpx import get as httpx_get
 
 from eva.structs import SqlConnectParams
+from eva.modules import Singleton
 
-class BotConfig:
+
+class BotConfig(metaclass=Singleton):
+
     def __init__(this) -> None:
 
         this.postgresql_url = environ.get("DATABASE_URL")

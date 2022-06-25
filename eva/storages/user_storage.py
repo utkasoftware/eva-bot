@@ -15,7 +15,7 @@ class UserStorage(Storage):
 
     def __init__(this):
         super().__init__()
-        this.__create() 
+        this.__create()
 
     def __create(this) -> None:
         cur = this.con.cursor()

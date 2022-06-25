@@ -8,6 +8,7 @@ from eva.structs import User
 from eva.structs import Captcha
 from eva.storages import Storage
 
+
 class CaptchaStorage(Storage):
 
     def __init__(this):

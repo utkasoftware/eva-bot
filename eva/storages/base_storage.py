@@ -3,7 +3,7 @@
 #    2020-2022
 
 from .pools import Pool
-from .singleton import Singleton
+from eva.modules import Singleton
 
 pool = Pool()
 
