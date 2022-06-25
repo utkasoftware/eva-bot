@@ -4,10 +4,12 @@
 
 import logging
 import coloredlogs
+import verboselogs
 
 
 default_format = (
-    "%(asctime)s %(filename)s:%(funcName)s::%(lineno)d %(levelname)s: %(message)s"
+    "%(asctime)s %(filename)s:%(funcName)s:%(lineno)d %(levelname)s %(message)s"
 )
-logger = logging.getLogger(__name__)
+logger = verboselogs.VerboseLogger(__name__)
 coloredlogs.install(level="INFO", fmt=default_format)
+

@@ -623,7 +623,7 @@ def start(optional_args):
     bot.start(bot_token=bot_token)
     bot.parse_mode = "html"
 
-    logger.info("Started for {}".format(BotSecurity.bot_id))
-    logger.info("Admin ID: {}".format(BotConfig.get_owner_id()))
+    logger.success("Started for {}".format(BotSecurity.bot_id))
+    logger.success("Admin ID: {}".format(BotConfig.get_owner_id()))
 
     bot.run_until_disconnected()

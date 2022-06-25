@@ -11,10 +11,12 @@ from eva.configs import BotConfig
 from eva.structs import States
 from eva.storages import UserStorage
 from eva.storages import ChatStorage
+from eva.modules import logger
 from eva import utils
 
 
 class BotSecurity:
+
     def __init__(this) -> None:
 
         this.user_storage = UserStorage()
@@ -31,11 +33,6 @@ class BotSecurity:
 
     def is_owner(this, user_id: int) -> bool:
         return this.owner_id == user_id
-
-    """
-    Main decorators
-
-    """
 
     def admins(this, check_anon: bool = False) -> Callable:
         def pseudo_decor(event_func: Callable):
@@ -146,9 +143,9 @@ Please do not use several opposite params (i.e., \
                             if use_limiter:
                                 await this.chat_storage.update_chat_limits(chat_id)
                             raise StopPropagation
-                        print(
-                            "** id{} has ignored:: \
-anonymous admin is banned cooldown has not expired".format(
+                        logger.notice(
+                            "id{} has ignored: \
+anonymous admin is banned or cooldown has not expired".format(
                                 chat_id
                             )
                         )
@@ -175,8 +172,8 @@ anonymous admin is banned cooldown has not expired".format(
                         if use_limiter:
                             await this.user_storage.update_limits(user_id)
                         raise StopPropagation
-                    print(
-                        "** id{} has ignored:: \
+                    logger.notice(
+                        "id{} has ignored: \
 user is blocked or cooldown has not expired".format(
                             user_id
                         )
@@ -280,3 +277,4 @@ class UserStatesControl:
             return
 
         return wrapper
+
