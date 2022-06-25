@@ -4,14 +4,17 @@
 
 from os import environ
 from typing import Union
-
 from urllib.parse import urlparse
 from configparser import ConfigParser
 
 from httpx import get as httpx_get
 
+from eva.structs import SqlConnectParams
+from eva.modules import Singleton
 
-class BotConfig:
+
+class BotConfig(metaclass=Singleton):
+
     def __init__(this) -> None:
 
         this.postgresql_url = environ.get("DATABASE_URL")
@@ -29,7 +32,7 @@ class BotConfig:
 Missing "DATABASE_URL" env var or "config.ini" file'
             )
 
-    def get_connect_params(this) -> list[str]:
+    def get_connect_params(this) -> SqlConnectParams:
 
         if not this.postgresql_url:
             dbname = this.config.get("database", "db")
@@ -45,7 +48,7 @@ Missing "DATABASE_URL" env var or "config.ini" file'
             dbhost = pg_url.hostname
             dbport = pg_url.port
 
-        return [dbname, dbuser, dbpass, dbhost, dbport]
+        return SqlConnectParams(*[dbname, dbuser, dbpass, dbhost, dbport])
 
     def get_bot_token(this) -> str:
         return this.config.get("bot", "token") if not this.bot_token else this.bot_token

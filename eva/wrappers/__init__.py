@@ -3,5 +3,4 @@
 #    2020-2022
 
 from .captcha import CaptchaWrapper
-from .database import DatabaseWrapper
 from .spamwatch import SpamwatchWrapper
