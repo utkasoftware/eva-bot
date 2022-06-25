@@ -64,19 +64,14 @@ class BotSecurity:
 
         return wrapper
 
-    def limiter(
-        this,
-        only_private_groups: bool = False,
-        only_private: bool = False,
-        no_private: bool = False,
-        use_limiter: bool = True,
-        anonymous: bool = False,
-        cooldown: int = None,
-    ) -> Callable:
-        """
-        # @todo Refactor me please
+    def limiter(this, *args, **kwargs) -> Callable:
 
-        """
+        only_private_groups = kwargs.get("only_private_groups", False)
+        only_private = kwargs.get("only_private", False)
+        no_private = kwargs.get("no_private", False)
+        use_limiter = kwargs.get("use_limiter", True)
+        anonymous = kwargs.get("anonymous", False)
+        cooldown = kwargs.get("cooldown", None)
 
         def pseudo_decor(event_function: Callable) -> Callable:
             @wraps(event_function)
@@ -165,7 +160,7 @@ anonymous admin is banned cooldown has not expired".format(
                         raise StopPropagation
                     return
 
-                elif user_limits:
+                if user_limits:
 
                     last_request, blocked = user_limits
                     now = int(datetime.now().timestamp())
@@ -193,10 +188,8 @@ user is blocked or cooldown has not expired".format(
                     if use_limiter:
                         await this.user_storage.update_limits(user_id)
                     raise StopPropagation
-                return
 
             return wrapper
-
         return pseudo_decor
 
 

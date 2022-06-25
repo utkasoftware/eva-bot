@@ -65,7 +65,7 @@ async def all_handler(event: Message) -> None:
     """
 
     if not utils.is_channel(event) and utils.is_private(event):
-            await UserStorage.save_user(event)
+        await UserStorage.save_user(event)
 
     if utils.is_private(event) and not event.message.text.startswith("/"):
 
@@ -165,9 +165,8 @@ async def captcha_answer(event):
     for char in answer:
         if char.isalpha() or char.isnumeric():
             continue
-        else:
-            await bot.send_message(event.sender.id, LL.incorrect_answer)
-            return
+        await bot.send_message(event.sender.id, LL.incorrect_answer)
+        break
 
     captcha = await CaptchaStorage.solve_captcha(
         user_id=event.sender.id, text=answer
@@ -266,7 +265,7 @@ async def rassmail_cmd(event):
             ok_count += 1
             logger.info("OK")
 
-    await bot.edit_messages(
+    await bot.edit_message(
         sending_msg, "Done.\nOK: {}\nErrors: {}".format(ok_count, error_count)
     )
 
@@ -274,9 +273,7 @@ async def rassmail_cmd(event):
 # @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"/unsubscribe"))
 # @BotSecurity.limiter(only_private=True)
 # @Usc.START
-async def unsubscribe_cmd(event: Message):
-
-    pass
+# async def unsubscribe_cmd(event: Message):
     # await event.respond("ОК, отписала Вас от рассылки.")
 
 
@@ -405,7 +402,6 @@ async def connect_cmd(event: Message) -> None:
             await ChatStorage.set_log_channel(
                 event.chat.id, event.forward.from_id.channel_id
             )
-            return
     else:
         await event.respond(LL.connect_forward_cmd)
 
@@ -496,7 +492,8 @@ async def join_cmd(event: Message) -> None:
             else:
                 chat_returned = await bot(GetChatsRequest(id=[chat]))
             chats_info.append(chat_returned.chats[0])
-        except:
+        except Exception as e:
+            logger.fatal(e)
             pass  # FIXME
 
     buttons = []
@@ -621,9 +618,9 @@ async def renew_captcha_cmd(event: Message) -> None:
 
 def start(optional_args):
 
-    BOT_TOKEN = BotConfig.get_bot_token()
+    bot_token = BotConfig.get_bot_token()
 
-    bot.start(bot_token=BOT_TOKEN)
+    bot.start(bot_token=bot_token)
     bot.parse_mode = "html"
 
     logger.info("Started for {}".format(BotSecurity.bot_id))

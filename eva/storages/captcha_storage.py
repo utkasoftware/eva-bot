@@ -4,7 +4,6 @@
 
 from datetime import datetime
 
-from eva.structs import User
 from eva.structs import Captcha
 from eva.storages import Storage
 
@@ -94,7 +93,7 @@ class CaptchaStorage(Storage):
             )
             row = cur.fetchone()
         except Exception as e:
-            ret_captcha.error = (True,)
+            ret_captcha.error = True
             ret_captcha.error_msg = str(e)
             return ret_captcha
 

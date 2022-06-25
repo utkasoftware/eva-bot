@@ -4,9 +4,10 @@
 
 from psycopg2 import pool
 from eva.configs import BotConfig
+from eva.modules import Singleton
 
 
-class Pool:
+class Pool(metaclass=Singleton):
 
     def __init__(this):
 

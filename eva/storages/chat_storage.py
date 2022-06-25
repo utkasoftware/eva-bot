@@ -169,7 +169,7 @@ class ChatStorage(Storage):
         _domains = [_domain.strip() for _domain in [row[2] for row in rows]]
 
         result = []
-        for i in range(0, len(_ids)):
+        for i in range(len(_ids)):
             result.append([_ids[i], _names[i], _domains[i]])
         return result
 

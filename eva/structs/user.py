@@ -2,7 +2,7 @@
 #    Eva Telegram Bot (https://t.me/storoxbot)
 #    2020-2022
 
-from typing      import Type, List
+from typing      import Type
 from dataclasses import dataclass, field
 from datetime    import datetime
 

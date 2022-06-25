@@ -39,8 +39,8 @@ class UserStorage(Storage):
     async def add_user(this, user: User) -> None:
 
         cur = this.con.cursor()
-        name = (User.first_name[:62] + "..") \
-        if len(User.first_name) > 62 else User.first_name
+        name = (user.first_name[:62] + "..") \
+        if len(user.first_name) > 62 else user.first_name
         cur.execute(
             sql.SQL(
                 """
@@ -56,7 +56,7 @@ class UserStorage(Storage):
                     name = excluded.name
                     """
             ),
-            {"in_userid": User.id, "in_name": name},
+            {"in_userid": user.id, "in_name": name},
         )
         this.complete_transaction()
 
@@ -104,7 +104,7 @@ class UserStorage(Storage):
             else: chat_domain = this.NA
             
             if chat_mega := hasattr(data.chat, "megagroup"):
-                chat_mega = chat_mega
+                pass
 
             #if hasattr(data.chat, "megagroup"):
             #    chat_mega = data.chat.megagroup
@@ -243,10 +243,9 @@ class UserStorage(Storage):
         row = cur.fetchone()
         if not row:
             return []
-        elif len(row[0]) == 0:
+        if len(row[0]) == 0:
             return []
-        else:
-            return row[0]
+        return row[0]
 
     async def ban_user(this, user_id: int) -> None:
         cur = this.con.cursor()
