@@ -31,7 +31,7 @@ class CaptchaStorage(Storage):
         this.complete_transaction()
 
     async def add_captcha(
-        this, user_id: int, text: str, chat_id: int) -> None:
+            this, user_id: int, text: str, chat_id: int) -> None:
 
         cur = this.con.cursor()
 
@@ -241,4 +241,3 @@ class CaptchaStorage(Storage):
         )
 
         this.complete_transaction()
-

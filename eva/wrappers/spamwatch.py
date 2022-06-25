@@ -7,6 +7,7 @@ from httpx import AsyncClient, codes, TimeoutException
 from eva.configs import BotConfig
 from eva.modules import logger
 
+
 class SpamwatchWrapper:
 
     def __init__(this, token: str = BotConfig().get_spamwatch_token()):
@@ -31,4 +32,3 @@ class SpamwatchWrapper:
             # юзера нет в бд
             return True
         return False
-

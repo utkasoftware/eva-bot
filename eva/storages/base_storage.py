@@ -3,13 +3,8 @@
 #    2020-2022
 
 from eva.modules import Singleton
+from eva.errors import StorageException
 from .pools import Pool
-
-class StorageException(Exception):
-
-    def __init__(this, message, *errors):
-        Exception.__init__(this, message)
-        this.errors = errors
 
 
 class Storage(metaclass=Singleton):
@@ -31,4 +26,3 @@ class Storage(metaclass=Singleton):
         except Exception as e:
             this.con.rollback()
             raise StorageException(*e.args) from e
-

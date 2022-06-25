@@ -11,6 +11,7 @@ from httpx import get as httpx_get
 
 from eva.structs import SqlConnectParams
 from eva.modules import Singleton
+from eva.errors import ConfigMissingError
 
 
 class BotConfig(metaclass=Singleton):
@@ -22,12 +23,12 @@ class BotConfig(metaclass=Singleton):
         this.config = ConfigParser()
         this.config.read("config.ini")
         if not this.config.has_section("bot") and not this.bot_token:
-            raise Exception(
+            raise ConfigMissingError(
                 'Token not found: Missing "BOT_TOKEN" env var or "config.ini" file'
             )
 
         if not this.config.has_section("database") and not this.postgresql_url:
-            raise Exception(
+            raise ConfigMissingError(
                 'Database params not found: \
 Missing "DATABASE_URL" env var or "config.ini" file'
             )
@@ -48,7 +49,7 @@ Missing "DATABASE_URL" env var or "config.ini" file'
             dbhost = pg_url.hostname
             dbport = pg_url.port
 
-        return SqlConnectParams(*[dbname, dbuser, dbpass, dbhost, dbport])
+        return SqlConnectParams(dbname, dbuser, dbpass, dbhost, dbport)
 
     def get_bot_token(this) -> str:
         return this.config.get("bot", "token") if not this.bot_token else this.bot_token

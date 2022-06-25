@@ -88,7 +88,7 @@ class CaptchaWrapper:
         this.__chars = chars
 
     def generate(this, length: int = 5, width: int = 250,
-        height: int = 180) -> Captcha:
+                 height: int = 180) -> Captcha:
 
         text = []
         for i in range(length):
@@ -99,4 +99,3 @@ class CaptchaWrapper:
         this.captcha.image = image_obj.generate(text)
 
         return this.captcha
-

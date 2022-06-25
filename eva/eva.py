@@ -151,10 +151,12 @@ async def new_add_greetings(event: Message) -> None:
             LL.promote_me_please,
         )
 
+
 async def feedback_thanks(event):
     await bot.forward_messages(BotSecurity.owner_id, event.message)
     await event.respond(LL.feedback_thanks)
     await Usc.update(event.chat.id, States.START)
+
 
 @BotSecurity.limiter(only_private=True)
 async def captcha_answer(event):
@@ -233,6 +235,7 @@ async def captcha_answer(event):
             await Usc.update(event.sender.id, States.START)
             return
 
+
 @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"/massmail"))
 @BotSecurity.owner
 async def rassmail_cmd(event):
@@ -283,10 +286,10 @@ async def rassmail_cmd(event):
 async def feedback_cmd(event: Message) -> None:
 
     await bot.send_message(event.chat,
-        LL.feedback_text,
-        link_preview=False,
-        buttons=[Button.inline("Отменить", bytes("cancel", encoding="utf-8"))]
-        )
+                           LL.feedback_text,
+                           link_preview=False,
+                           buttons=[Button.inline("Отменить", bytes("cancel", encoding="utf-8"))]
+                           )
     await Usc.update(event.chat.id, States.FEEDBACK_WAIT_FOR_ANSWER)
 
 
@@ -300,8 +303,10 @@ async def eve_init_cmd(event: Message) -> None:
         if hasattr(event.chat, "username") and event.chat.username
         else False
     )
-    if public_group: chat_type = "открытый"
-    else: chat_type = "закрытый"
+    if public_group:
+        chat_type = "открытый"
+    else:
+        chat_type = "закрытый"
     join_request_mode = event.chat.join_request
     wait_msg = await bot.send_message(event.chat.id, LL.initializing)
 
@@ -420,6 +425,7 @@ async def start_cmd(event: Message) -> None:
             return
     await event.respond(LL.start_text)
     await utils.log_event(event, "/start")
+
 
 @bot.on(events.NewMessage(incoming=True, forwards=False, pattern=r"(/)(ping)"))
 @BotSecurity.limiter()
@@ -617,6 +623,9 @@ async def renew_captcha_cmd(event: Message) -> None:
 
 
 def start(optional_args):
+
+    if optional_args.log_level != logger.DEFAULT_LEVEL:
+        logger.setLevel(optional_args.log_level)
 
     bot_token = BotConfig.get_bot_token()
 

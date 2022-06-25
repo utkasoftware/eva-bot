@@ -7,7 +7,6 @@ from . import Message
 
 
 def is_my_cmd(message: Message, my_username: str) -> bool:
-
     """
     Checking a command for belonging to a specific bot.
     I.e, if bots username 'mybot', then command '/ping@Samplebot' will be ignored,

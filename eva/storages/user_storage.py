@@ -40,7 +40,7 @@ class UserStorage(Storage):
 
         cur = this.con.cursor()
         name = (user.first_name[:62] + "..") \
-        if len(user.first_name) > 62 else user.first_name
+            if len(user.first_name) > 62 else user.first_name
         cur.execute(
             sql.SQL(
                 """
@@ -96,19 +96,19 @@ class UserStorage(Storage):
                 else data.chat.title
             )
 
-
             if _ := hasattr(data.chat, "username"):
                 chat_domain = (
                     data.chat.username if data.chat.username else this.NA
                 )
-            else: chat_domain = this.NA
-            
+            else:
+                chat_domain = this.NA
+
             if chat_mega := hasattr(data.chat, "megagroup"):
                 pass
 
-            #if hasattr(data.chat, "megagroup"):
+            # if hasattr(data.chat, "megagroup"):
             #    chat_mega = data.chat.megagroup
-            #else:
+            # else:
             #    chat_mega = False
 
             cur.execute(
@@ -181,7 +181,7 @@ class UserStorage(Storage):
     async def get_users_count(this) -> int:
         cur = this.con.cursor()
         cur.execute("""SELECT COUNT(DISTINCT user_id) FROM users_stats""")
-        count = cur.fetchone()[0] # tuple
+        count = cur.fetchone()[0]  # tuple
         return count
 
     async def get_all_ids(this) -> list[int]:
@@ -359,4 +359,3 @@ class UserStorage(Storage):
             {"t": now, "id": user_id},
         )
         this.complete_transaction()
-

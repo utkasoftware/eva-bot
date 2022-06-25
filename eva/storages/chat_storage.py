@@ -172,4 +172,3 @@ class ChatStorage(Storage):
         for i in range(len(_ids)):
             result.append([_ids[i], _names[i], _domains[i]])
         return result
-

@@ -12,6 +12,7 @@ from eva.structs import States
 from eva.storages import UserStorage
 from eva.storages import ChatStorage
 from eva.modules import logger
+from eva.errors import LimiterArgsConflict
 from eva import utils
 
 
@@ -106,7 +107,7 @@ class BotSecurity:
                 if all([only_private, no_private]) or all(
                     [only_private, only_private_groups]
                 ):
-                    raise Exception(
+                    raise LimiterArgsConflict(
                         'limiter args conflict. \
 Please do not use several opposite params (i.e., \
 "only_private" and "no_private") at the same time.'
@@ -277,4 +278,3 @@ class UserStatesControl:
             return
 
         return wrapper
-
