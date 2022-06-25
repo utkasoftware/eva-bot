@@ -161,7 +161,7 @@ anonymous admin is banned cooldown has not expired".format(
                     else:
                         await event_function(*events, **kwargs)
                         if use_limiter:
-                            await this.chat_storage.update_chat_limiter(chat_id)
+                            await this.chat_storage.update_chat_limits(chat_id)
                         raise StopPropagation
                     return
 

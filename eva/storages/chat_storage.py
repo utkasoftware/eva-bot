@@ -127,7 +127,7 @@ class ChatStorage(Storage):
             return []
         return [row[0], row[1]]
 
-    async def update_chat_limits(this, chat) -> None:
+    async def update_chat_limits(this, chat_id) -> None:
         cur = this.con.cursor()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -144,7 +144,7 @@ class ChatStorage(Storage):
         )
         this.complete_transaction()
 
-    async def get_chat_members(this, chat) -> [int]:
+    async def get_chat_members(this, chat_id) -> [int]:
         cur = this.con.cursor()
         cur.execute(
             """
