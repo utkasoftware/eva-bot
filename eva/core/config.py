@@ -11,10 +11,10 @@ from httpx import get as httpx_get
 
 from eva.structs import SqlConnectParams
 from eva.modules import Singleton
-from eva.errors import ConfigMissingError
+from .errors import ConfigMissingError
 
 
-class BotConfig(metaclass=Singleton):
+class Config(metaclass=Singleton):
 
     def __init__(this) -> None:
 

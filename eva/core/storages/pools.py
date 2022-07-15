@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
 
 from psycopg2 import pool, OperationalError
-from eva.configs import BotConfig
+from ..config import Config
 from eva.modules import Singleton, logger
 
 
@@ -11,7 +9,7 @@ class Pool(metaclass=Singleton):
 
     def __init__(this):
 
-        params = BotConfig().get_connect_params()
+        params = Config().get_connect_params()
         try:
             this.pool = pool.SimpleConnectionPool(
                 1,

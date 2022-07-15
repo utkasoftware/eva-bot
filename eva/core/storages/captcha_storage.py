@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
 
 from datetime import datetime
 
 from eva.structs import Captcha
-from eva.storages import Storage
+from . import Storage
 
 
 class CaptchaStorage(Storage):
+
+    """
+    Репозиторий для работы с капчами в базе.
+    this.con получает от суперкласса.
+    """
 
     def __init__(this):
         super().__init__()
@@ -32,6 +35,11 @@ class CaptchaStorage(Storage):
 
     async def add_captcha(
             this, user_id: int, text: str, chat_id: int) -> None:
+        """
+        Добавление новой капчи с возможной перезаписью уже существующей
+        для конкретной связки user_id:chat_id.
+
+        """
 
         cur = this.con.cursor()
 

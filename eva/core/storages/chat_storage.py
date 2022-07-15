@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
 
 from datetime import datetime
 from psycopg2 import sql
 
-from eva.storages import Storage
+from . import Storage
 
 
 class ChatStorage(Storage):
 
-    NA = "none"
+    """
+    Репозиторий для работы с данными групп в базе.
+    this.con получает от суперкласса.
+    """
+
+    NA = "none"  # Значение по умолчанию для полей без данных
 
     def __init__(this):
         super().__init__()
@@ -37,6 +40,8 @@ class ChatStorage(Storage):
         this.complete_transaction()
 
     async def save_chat(this, data) -> None:
+        """Запись данных группы в базу"""
+
         chat = data.chat
         cur = this.con.cursor()
         chat_id = chat.id
@@ -76,6 +81,8 @@ class ChatStorage(Storage):
         this.complete_transaction()
 
     async def set_log_channel(this, chat_id, channel_id) -> None:
+        """Подключаем указанный channel_id канала к группе для логгирования"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -91,6 +98,8 @@ class ChatStorage(Storage):
         this.complete_transaction()
 
     async def get_log_channel(this, chat_id) -> int:
+        """Получение channel_id логгинг-канала для группы"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -110,6 +119,10 @@ class ChatStorage(Storage):
         return channel_id
 
     async def get_chat_limits(this, chat_id: int) -> list[str]:
+        """Получение локальных ограничений группы.
+        last_act: timestamp - время последнего интерактива с ботом.
+        """
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -128,6 +141,8 @@ class ChatStorage(Storage):
         return [row[0], row[1]]
 
     async def update_chat_limits(this, chat_id) -> None:
+        """Обновление локальных ограничений группы"""
+
         cur = this.con.cursor()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -144,7 +159,9 @@ class ChatStorage(Storage):
         )
         this.complete_transaction()
 
-    async def get_chat_members(this, chat_id) -> [int]:
+    async def get_chat_members(this, chat_id) -> list[int]:
+        """Получение списка с целыми числами user_id участников группы"""
+
         cur = this.con.cursor()
         cur.execute(
             """

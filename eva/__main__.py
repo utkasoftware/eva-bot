@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
+# Eva Telegram Bot (https://t.me/storoxbot)
+# 2022
 
 
 from sys import version_info, setprofile
@@ -21,6 +21,7 @@ parser.add_argument(
     dest="log_level",
     required=False)
 
+
 # parser.add_argument("-t", "--token", help="Bot token", dest="token", required=False)
 # parser.add_argument("-a", "--admin", dest="admin_id", default=0, type=int)
 
@@ -36,7 +37,7 @@ if version_info < (3, 10, 0):
     print("Eva needs a Python version of at least 3.10 to work correctly.")
 else:
     if __package__ != "eva":
-        print("Error: you cannot run this as a script; you must execute as a package")
+        print("Error: you cannot run this as a script; you must execute aa a package")
     else:
         try:
             from . import eva

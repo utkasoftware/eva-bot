@@ -130,9 +130,12 @@ dmypy.json
 
 # Bot
 config.ini
+## Пока не доделаю
+eva/setup.py
 eva/wrappers/*test.py
 eva/tracelogs/
 eva/tests/test_*
+eva/reports/
 *.session
 *.session-journal
 *.log

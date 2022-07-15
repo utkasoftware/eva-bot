@@ -91,8 +91,8 @@ class CaptchaWrapper:
                  height: int = 180) -> Captcha:
 
         text = []
-        for i in range(length):
-            text.append(choice(this.__chars))
+        for _ in range(length):
+            text.append(choice(this.__chars))  # nosec
 
         image_obj = ImageCaptcha(width=width, height=height)
         this.captcha.text = "".join(text)

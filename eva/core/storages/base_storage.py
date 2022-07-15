@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
 
 from eva.modules import Singleton
-from eva.errors import StorageException
+from ..errors import StorageException
 from .pools import Pool
 
 
 class Storage(metaclass=Singleton):
+
+    """
+    Базовый класс репозитория.
+    Создает единый пул соединения и передает коннекторы this.con дочерним классам.
+    Разрешён только один экземпляр (см. метакласс) на весь жизненный цикл модуля.
+    """
 
     def __init__(this):
 
@@ -21,6 +25,9 @@ class Storage(metaclass=Singleton):
         return this.__pool.get_connection()
 
     def complete_transaction(this):
+        """
+        Закрываем транзакцию или откатываем курсор до предыдущего состояния при неудаче
+        """
         try:
             this.con.commit()
         except Exception as e:

@@ -34,7 +34,7 @@ class Language:
                     )
                 )
 
-                with open("eva/langs/default.json", "r", encoding="utf-8") as raw_json:
+                with open("eva/../langs/default.json", "r", encoding="utf-8") as raw_json:
                     lang_json = json.load(raw_json)
 
             except json.decoder.JSONDecodeError:
@@ -44,7 +44,7 @@ class Language:
                 raise
 
         else:
-            with open("eva/langs/default.json", "r", encoding="utf-8") as raw_json:
+            with open("eva/../langs/default.json", "r", encoding="utf-8") as raw_json:
                 lang_json = json.load(raw_json)
 
         return Language(lang_json)
