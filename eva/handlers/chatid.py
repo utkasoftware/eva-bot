@@ -7,7 +7,8 @@ from telethon.events import (
 
 from .. import (
     bot_manage,
-    utils
+    utils,
+    local
 )
 
 
@@ -19,14 +20,12 @@ from .. import (
 @bot_manage.limiter(anonymous=True)
 async def chatid__cmd(event) -> None:
     if not utils.is_private(event):
-        chatid_text = "<b>{}</b> chat ID: <code>-100{}</code>".format(
+        chatid_text = local.chat_id_group.format(
             escape(event.chat.title), event.chat.id
         )
-        await event.reply(chatid_text)
-        await utils.log_event(event, "/chatid")
     else:
-        chatid_text = "{} ID <code>{}</code>".format(
+        chatid_text = local.chat_id.format(
             escape(event.sender.first_name), event.chat.id
         )
-        await event.reply(chatid_text)
-        await utils.log_event(event, "/chatid")
+    await event.reply(chatid_text)
+    await utils.log_event(event, "/chatid")
