@@ -7,9 +7,10 @@ import coloredlogs
 import verboselogs
 
 
-default_format = (
+_default_format = (
     "%(asctime)s %(filename)s:%(funcName)s:%(lineno)d %(levelname)s %(message)s"
 )
+DEFAULT_LEVEL = "INFO"
 logger = verboselogs.VerboseLogger(__name__)
-coloredlogs.install(level="INFO", fmt=default_format)
-
+logger.DEFAULT_LEVEL = DEFAULT_LEVEL
+coloredlogs.install(level=DEFAULT_LEVEL, fmt=_default_format)

@@ -4,12 +4,13 @@
 
 from httpx import AsyncClient, codes, TimeoutException
 
-from eva.configs import BotConfig
+from eva.core.config import Config
 from eva.modules import logger
+
 
 class SpamwatchWrapper:
 
-    def __init__(this, token: str = BotConfig().get_spamwatch_token()):
+    def __init__(this, token: str = Config().get_spamwatch_token()):
 
         this.token = token
 
@@ -31,4 +32,3 @@ class SpamwatchWrapper:
             # юзера нет в бд
             return True
         return False
-

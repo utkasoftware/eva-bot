@@ -7,7 +7,6 @@ from . import Message
 
 
 def get_message_args(message: Message) -> list[str]:
-
     """
     get_message_args('/say hello world') will return
     ['hello', 'world']

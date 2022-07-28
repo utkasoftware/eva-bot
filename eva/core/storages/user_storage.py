@@ -1,23 +1,27 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
 
 from datetime import datetime
 from psycopg2 import sql
 
 from eva.structs import User
-from eva.storages import Storage
+from . import Storage
 
 
 class UserStorage(Storage):
 
-    NA = "none"
+    """
+    Репозиторий для работы с данными пользователя в базе.
+    this.con получает от суперкласса.
+    """
+
+    NA = "none"  # Значение по умолчанию для полей без данных
 
     def __init__(this):
         super().__init__()
         this.__create()
 
     def __create(this) -> None:
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -37,10 +41,14 @@ class UserStorage(Storage):
         this.complete_transaction()
 
     async def add_user(this, user: User) -> None:
+        """
+        Добавление пользователя в таблицу с базовыми данными.
+        Нужно для случаев когда бот увидел пользователя, но диалога с ним еще не имеет.
+        """
 
         cur = this.con.cursor()
         name = (user.first_name[:62] + "..") \
-        if len(user.first_name) > 62 else user.first_name
+            if len(user.first_name) > 62 else user.first_name
         cur.execute(
             sql.SQL(
                 """
@@ -60,7 +68,12 @@ class UserStorage(Storage):
         )
         this.complete_transaction()
 
-    async def save_user(this, data) -> None:
+    async def save(this, data) -> None:
+        """
+        Запись пользователя в базу. В отличие от add_user,
+        этот метод вызывается при каждом update event и перезаписывает обновленные данные, если необходимо.
+        """
+
         cur = this.con.cursor()
         user_id = data.sender.id
         name = (
@@ -96,20 +109,20 @@ class UserStorage(Storage):
                 else data.chat.title
             )
 
-
-            if _ := hasattr(data.chat, "username"):
+            if hasattr(data.chat, "username"):
                 chat_domain = (
                     data.chat.username if data.chat.username else this.NA
                 )
-            else: chat_domain = this.NA
-            
-            if chat_mega := hasattr(data.chat, "megagroup"):
-                pass
+            else:
+                chat_domain = this.NA
 
-            #if hasattr(data.chat, "megagroup"):
-            #    chat_mega = data.chat.megagroup
-            #else:
-            #    chat_mega = False
+            # if chat_mega := hasattr(data.chat, "megagroup"):
+            #    pass
+
+            if hasattr(data.chat, "megagroup"):
+                chat_mega = data.chat.megagroup
+            else:
+                chat_mega = False
 
             cur.execute(
                 sql.SQL(
@@ -160,6 +173,8 @@ class UserStorage(Storage):
         this.complete_transaction()
 
     async def get_user(this, user_id: int) -> User | list:
+        """Возвращает пользователя в виде экземпляра User или пустой лист"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -179,12 +194,16 @@ class UserStorage(Storage):
         return User(*row)
 
     async def get_users_count(this) -> int:
+        """Возвращает целое число"""
+
         cur = this.con.cursor()
         cur.execute("""SELECT COUNT(DISTINCT user_id) FROM users_stats""")
-        count = cur.fetchone()[0] # tuple
+        count = cur.fetchone()[0]  # tuple
         return count
 
     async def get_all_ids(this) -> list[int]:
+        """Возвращает список с целыми числами"""
+
         cur = this.con.cursor()
         cur.execute(
             """SELECT user_id FROM users_stats""")
@@ -193,6 +212,8 @@ class UserStorage(Storage):
         return users
 
     async def set_user_state(this, user_id: int, state_id: int) -> None:
+        """Устанавливаем состояние пользователя."""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -208,6 +229,8 @@ class UserStorage(Storage):
         this.complete_transaction()
 
     async def get_user_state(this, user_id: int) -> int:
+        """Возвращает состояние пользователя"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -228,6 +251,11 @@ class UserStorage(Storage):
         return state_id
 
     async def get_user_chats(this, user_id: int) -> list[int]:
+        """
+        Возвращает список с целыми числами - идентификаторами чатов,
+        в которых состоит пользователь.
+        """
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -248,6 +276,8 @@ class UserStorage(Storage):
         return row[0]
 
     async def ban_user(this, user_id: int) -> None:
+        """Локальный бан пользователя"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -263,6 +293,8 @@ class UserStorage(Storage):
         this.complete_transaction()
 
     async def unban_user(this, user_id: int) -> None:
+        """Локальный разбан пользователя"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -278,6 +310,8 @@ class UserStorage(Storage):
         this.complete_transaction()
 
     async def is_user_banned(this, user_id: int) -> bool:
+        """Проверка пользователя на локальный бан"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -292,10 +326,11 @@ class UserStorage(Storage):
         )
         row = cur.fetchone()
         row = list(row)
-
         return row[0]
 
     async def set_admin(this, user_id: int, val: str) -> None:
+        """Изменение локальных прав пользователя"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -311,6 +346,8 @@ class UserStorage(Storage):
         this.complete_transaction()
 
     async def is_admin(this, user_id: int) -> bool:
+        """Проверка локальных прав пользователя"""
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -327,6 +364,11 @@ class UserStorage(Storage):
         return bool(row[0])
 
     async def get_user_limits(this, user_id: int) -> list[str]:
+        """
+        Получение локальных ограничений пользователя.
+        last_req: timestamp - время последнего обращения пользователя к боту.
+        """
+
         cur = this.con.cursor()
         cur.execute(
             """
@@ -345,6 +387,8 @@ class UserStorage(Storage):
         return [row[0], row[1]]
 
     async def update_limits(this, user_id: int) -> None:
+        """Обновление локальных ограничений пользователя"""
+
         cur = this.con.cursor()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cur.execute(
@@ -359,4 +403,3 @@ class UserStorage(Storage):
             {"t": now, "id": user_id},
         )
         this.complete_transaction()
-

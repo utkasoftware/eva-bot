@@ -8,7 +8,6 @@ from .is_anon import is_anon
 
 
 def is_private(data: Message, group: bool = False) -> bool:
-
     """Is private (PM or group) or not"""
 
     if is_anon(data):
@@ -26,4 +25,3 @@ def is_private(data: Message, group: bool = False) -> bool:
     if hasattr(data.chat, "username"):
         return bool(not data.chat.username)
     return True
-

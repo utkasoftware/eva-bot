@@ -88,15 +88,14 @@ class CaptchaWrapper:
         this.__chars = chars
 
     def generate(this, length: int = 5, width: int = 250,
-        height: int = 180) -> Captcha:
+                 height: int = 180) -> Captcha:
 
         text = []
-        for i in range(length):
-            text.append(choice(this.__chars))
+        for _ in range(length):
+            text.append(choice(this.__chars))  # nosec
 
         image_obj = ImageCaptcha(width=width, height=height)
         this.captcha.text = "".join(text)
         this.captcha.image = image_obj.generate(text)
 
         return this.captcha
-

@@ -1,27 +1,26 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
 
 from typing import Callable
 from functools import wraps
 from datetime import datetime
 from telethon.events import StopPropagation
 
-from eva.configs import BotConfig
-from eva.structs import States
-from eva.storages import UserStorage
-from eva.storages import ChatStorage
-from eva.modules import logger
-from eva import utils
+from .config import Config
+from .storages import UserStorage
+from .storages import ChatStorage
+from .errors import LimiterArgsConflict
+from ..structs import States
+from ..modules import logger
+from .. import utils
 
 
-class BotSecurity:
+class BotManage:
 
     def __init__(this) -> None:
 
         this.user_storage = UserStorage()
         this.chat_storage = ChatStorage()
-        this.bot_config = BotConfig()
+        this.bot_config = Config()
 
         this.bot_username = this.bot_config.get_bot_username()
         this.bot_id = this.bot_config.get_bot_id()
@@ -106,7 +105,7 @@ class BotSecurity:
                 if all([only_private, no_private]) or all(
                     [only_private, only_private_groups]
                 ):
-                    raise Exception(
+                    raise LimiterArgsConflict(
                         'limiter args conflict. \
 Please do not use several opposite params (i.e., \
 "only_private" and "no_private") at the same time.'
@@ -190,7 +189,7 @@ user is blocked or cooldown has not expired".format(
         return pseudo_decor
 
 
-class UserStatesControl:
+class UserState:
 
     """
     User state management
@@ -277,4 +276,3 @@ class UserStatesControl:
             return
 
         return wrapper
-

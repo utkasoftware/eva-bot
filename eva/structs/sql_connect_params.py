@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass
 
+
 @dataclass
 class SqlConnectParams:
 
@@ -13,4 +14,3 @@ class SqlConnectParams:
     password: str
     host: str
     port: int
-
