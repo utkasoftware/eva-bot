@@ -34,12 +34,13 @@ class ChatStorage(Storage):
                 first_add TIMESTAMP,
                 stopped BOOLEAN NOT NULL DEFAULT FALSE,
                 blocked BOOLEAN NOT NULL DEFAULT FALSE,
-                ads BOOLEAN NOT NULL DEFAULT TRUE);
+                ads BOOLEAN NOT NULL DEFAULT TRUE,
+                captcha_settings JSON NOT NULL);
             """
         )
         this.complete_transaction()
 
-    async def save_chat(this, data) -> None:
+    async def save(this, data) -> None:
         """Запись данных группы в базу"""
 
         chat = data.chat

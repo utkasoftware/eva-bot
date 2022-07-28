@@ -132,6 +132,8 @@ dmypy.json
 config.ini
 ## Пока не доделаю
 eva/setup.py
+## Нужны только локально
+docs/
 eva/wrappers/*test.py
 eva/tracelogs/
 eva/tests/test_*

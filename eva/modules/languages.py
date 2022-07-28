@@ -4,14 +4,14 @@
 
 from __future__ import annotations
 
-
 from typing import NoReturn
 import json
 
-from eva.modules import logger
+from . import logger
 
 
 class Language:
+
     def __init__(this, lang_dict: dict) -> None:
 
         this.lang_dict = lang_dict
@@ -30,21 +30,21 @@ class Language:
             except FileNotFoundError:
                 logger.warn(
                     "Language file {} not found; loading default file".format(
-                        language_name
-                    )
-                )
+                        language_name))
 
-                with open("eva/../langs/default.json", "r", encoding="utf-8") as raw_json:
+                with open("eva/../langs/default.json", "r",
+                          encoding="utf-8") as raw_json:
                     lang_json = json.load(raw_json)
 
             except json.decoder.JSONDecodeError:
                 logger.fatal(
-                    "Something went wrong with language file {}".format(language_name)
-                )
+                    "Something went wrong with language file {}".format(
+                        language_name))
                 raise
 
         else:
-            with open("eva/../langs/default.json", "r", encoding="utf-8") as raw_json:
+            with open("eva/../langs/default.json", "r",
+                      encoding="utf-8") as raw_json:
                 lang_json = json.load(raw_json)
 
         return Language(lang_json)

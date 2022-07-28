@@ -44,7 +44,7 @@ async def join__cmd(event):
         button = [
             Button.inline(
                 local.join_btn,
-                bytes("j{}".format(pending_chat_id), encoding="utf-8")
+                bytes("j${}".format(pending_chat_id), encoding="utf-8")
             )
         ]
         try:

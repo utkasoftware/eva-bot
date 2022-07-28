@@ -68,7 +68,7 @@ class UserStorage(Storage):
         )
         this.complete_transaction()
 
-    async def save_user(this, data) -> None:
+    async def save(this, data) -> None:
         """
         Запись пользователя в базу. В отличие от add_user,
         этот метод вызывается при каждом update event и перезаписывает обновленные данные, если необходимо.

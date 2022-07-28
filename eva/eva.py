@@ -48,8 +48,9 @@ async def all_handler(event: Message) -> None:
     Держать обязательно в самом начале хендлеров.
     """
 
+
     if not utils.is_channel(event) and utils.is_private(event):
-        await user_storage.save_user(event)
+        await user_storage.save(event)
 
     if utils.is_private(event) and not event.message.text.startswith("/"):
 
@@ -69,68 +70,91 @@ async def feedback_thanks(event):
     await usc.update(event.chat.id, usc.states.START)
 
 
+async def cancel__callback(event):
+
+    await event.edit(local.cancelled)
+    await usc.update(event.query.user_id, usc.states.START)
+
+
+async def join__callback(event):
+
+    _user_id = event.query.user_id
+    _chat_id = event.data.decode("utf-8").split("$")[1]
+    _captcha = captcha_wrapper.generate(*captcha_settings)
+
+    await captcha_storage.add(
+        user_id=_user_id,
+        text=_captcha.text,
+        chat_id=_chat_id
+    )
+    await event.edit(local.enter_image_text)
+    await bot.send_message(_user_id, file=_captcha.image)
+    await usc.update(_user_id, usc.states.WAIT_FOR_ANSWER)
+
+async def connect__callback(event):
+
+    _decoded_data = event.data.decode("utf-8")
+
+    _user_id = event.query.user_id
+    _chat_id = int(_decoded_data[2:].split(".")[0])
+    _channel_id = int(_decoded_data[2:].split(".")[1])
+    if _chat_id < 0:
+        _chat_id = -1_000_000_000_000 + _chat_id
+
+    user_permissions = await bot.get_permissions(entity=_chat_id, user=_user_id)
+    if not user_permissions.is_admin:
+        await event.answer(local.you_dont_have_admin_perms, alert=True)
+        return
+    try:
+        await bot.send_message(
+            _channel_id, local.log_channel_added_post.format(
+                escape(event.chat.title)
+            )
+        )
+    except ChannelPrivateError:
+        await event.edit(local.log_channel_add_error)
+        return
+    except ChatAdminRequiredError:
+        await event.edit(local.log_channel_missing_perms)
+        return
+    else:
+        await event.edit(local.log_channel_added)
+        await chat_storage.set_log_channel(_chat_id, _channel_id)
+        return
+
 @bot.on(events.CallbackQuery)
 async def callback_handler(event):
     """
     Колбэки от инлайн-кнопок
     Форматы bytes-данных:
-        '<действие>.<данные>'
+        '<действие>$<данные>'
         Доступные действия:
-            join    | j<chat_id:int>
-            connect | c<chat_id:int>.<channel_id:int>
+            join    | j$<chat_id:int>
+            connect | c$<chat_id:int>.<channel_id:int>
             cancel  | cancel
             ...
         Пример:
-            'j1000000'
-            'c1000000.1200000'
+            'j$1000000'
+            'c$1000000.1200000'
     """
 
-    decoded_data = event.data.decode("utf-8")
-    action = decoded_data
-    user_id = int(event.query.user_id)
+    query_action = event.data.decode("utf-8").split("$")[0]
 
-    if action == "cancel":
-        await event.edit(local.cancelled)
-        await usc.update(user_id, usc.states.START)
-        return
+    match query_action:
+        case "cancel":
+            return await cancel__callback(event)
 
-    if action[0] == "j":
-        chat_id = decoded_data[1:]
-        _captcha = captcha_wrapper.generate(*captcha_settings)
+        case "j":
+            return await join__callback(event)
 
-        await captcha_storage.add_captcha(
-            user_id=user_id, text=_captcha.text, chat_id=chat_id
-        )
-        await event.edit(local.enter_image_text)
-        await bot.send_message(user_id, file=_captcha.image)
-        await usc.update(user_id, usc.states.WAIT_FOR_ANSWER)
+        case "c":
+            return await connect__callback(event)
 
-    if action[0] == "c":
-        chat_id = int(decoded_data[1:].split(".")[0])
-        channel_id = int(decoded_data[1:].split(".")[1])
-        if chat_id < 0:
-            chat_id = -1_000_000_000_000 + chat_id
-
-        user_permissions = await bot.get_permissions(entity=chat_id, user=user_id)
-        if not user_permissions.is_admin:
-            await event.answer(local.you_dont_have_admin_perms, alert=True)
-            return
-        try:
-            await bot.send_message(
-                channel_id, local.log_channel_added_post.format(
-                    escape(event.chat.title)
-                )
+        case _:
+            logger.warn("got unexpected query action: \"{}\"".format(
+                query_action)
             )
-        except ChannelPrivateError:
-            await event.edit(local.log_channel_add_error)
-            return
-        except ChatAdminRequiredError:
-            await event.edit(local.log_channel_missing_perms)
-            return
-        else:
-            await event.edit(local.log_channel_added)
-            await chat_storage.set_log_channel(chat_id, channel_id)
-            return
+            logger.warn("event data: \n{}".format(event.stringify()))
 
 
 @bot.on(events.ChatAction)
@@ -253,7 +277,7 @@ async def join_requests_handler(event: Message) -> None:
             first_name=event.user.first_name
         )
     )
-    await captcha_storage.add_captcha(
+    await captcha_storage.add(
         user_id=event.user_id, text=captcha.text, chat_id=chat_id
     )
 
@@ -306,7 +330,7 @@ def start(optional_args):
     bot.start(bot_token=bot_token)
     bot.parse_mode = "html"
 
-    logger.success("Started for {}".format(bot_manage.bot_id))
+    logger.success("Starting for {}".format(bot_manage.bot_id))
     logger.success("Admin ID: {}".format(config.get_owner_id()))
 
     bot.run_until_disconnected()

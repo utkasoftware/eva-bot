@@ -46,7 +46,7 @@ async def connect__cmd(event):
                     Button.inline(
                         local.connect_confirm_button,
                         bytes(
-                            "c{}.{}".format(
+                            "c${}.{}".format(
                             event.chat.id,
                             event.forward.from_id.channel_id
                             ),

@@ -33,7 +33,7 @@ class CaptchaStorage(Storage):
         )
         this.complete_transaction()
 
-    async def add_captcha(
+    async def add(
             this, user_id: int, text: str, chat_id: int) -> None:
         """
         Добавление новой капчи с возможной перезаписью уже существующей
