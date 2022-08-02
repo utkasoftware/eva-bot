@@ -1,6 +1,6 @@
 coloredlogs==15.0.1
 verboselogs==1.7
-cryptg==0.2.post4
+cryptg==0.3.1
 httpx==0.23.0
 captcha==0.4
 MarkupSafe==2.1.1
