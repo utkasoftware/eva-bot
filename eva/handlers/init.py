@@ -41,8 +41,10 @@ async def init__cmd(event):
 
     if not admin_rights:
         await event.respond(
-            local.normal_group_but_permissions.format(escape(event.chat.title),
-                                                      chat_type))
+            local.private_group_but_permissions.format(
+                escape(event.chat.title),
+                chat_type)
+        )
         return
 
     report = local.init_report.format(event.chat.title, chat_type)

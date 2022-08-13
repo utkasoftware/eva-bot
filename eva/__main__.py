@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# Eva Telegram Bot (https://t.me/storoxbot)
-# 2022
 
 
 from sys import version_info, setprofile
@@ -14,12 +12,10 @@ parser.add_argument(
     "--dev", action="store_true", help="Dev mode: enable VERBOSE logging"
 )
 parser.add_argument(
-    "-l",
-    "--log",
-    help="Logging level",
-    default="INFO",
-    dest="log_level",
-    required=False)
+    "-l", "--log", help="Logging level",
+    default="INFO", dest="log_level",
+    required=False
+)
 
 
 # parser.add_argument("-t", "--token", help="Bot token", dest="token", required=False)

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
 
 
 class StorageException(Exception):
@@ -27,3 +25,16 @@ class LimiterArgsConflict(Exception):
 
         this.message = message
         super().__init__(this.message)
+
+
+class InvalidTokenError(Exception):
+
+    def __init__(this, token: str, api_response: str):
+        super().__init__(
+            (
+            "Bot token '{0}' is not valid. "
+            "Please check the config file and set the correct token\n"
+            "BotAPI response: '{1}'"
+            .format(token, api_response)
+            )
+        )

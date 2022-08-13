@@ -30,6 +30,7 @@ async def massmail__cmd(event):
     else:
         await event.respond("Empty args")
         return
+
     WAIT_SEC = 1.5
     users = user_storage.get_all_ids()
     wait_please_msg = await event.respond(
@@ -38,7 +39,11 @@ async def massmail__cmd(event):
     for user in users:
         logger.notice(local.massmail_sending.format(user))
         try:
-            await event.client.bot.send_message(user, mail_text)
+            await event.client.bot.send_message(
+                user,
+                mail_text,
+                link_preview=False
+            )
         except FloodWaitError as fwe:
             floodwaits += 1
             errors += 1

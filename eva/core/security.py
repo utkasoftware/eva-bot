@@ -20,18 +20,18 @@ class BotManage:
 
         this.user_storage = UserStorage()
         this.chat_storage = ChatStorage()
-        this.bot_config = Config()
+        this.config = Config()
 
-        this.bot_username = this.bot_config.get_bot_username()
-        this.bot_id = this.bot_config.get_bot_id()
-        this.owner_id = this.bot_config.get_owner_id()
+        this.bot_username = this.config.bot.username
+        this.bot_id = this.config.bot.id
+        this.owner_id = this.config.bot.admin
 
     def is_admin(this, user_id: int) -> bool:
         """! Bot admin, not chat or channel"""
         return this.user_storage.is_admin(user_id)
 
     def is_owner(this, user_id: int) -> bool:
-        return this.owner_id == user_id
+        return this.config.bot.admin == user_id
 
     def admins(this, check_anon: bool = False) -> Callable:
         def pseudo_decor(event_func: Callable):
@@ -53,7 +53,7 @@ class BotManage:
         async def wrapper(*events, **kwargs) -> None:
             data = events[0]
             user_id = data.sender.id
-            if user_id == this.owner_id:
+            if user_id == this.config.bot.admin:
                 await event_func(*events, **kwargs)
                 return
             return
@@ -84,6 +84,17 @@ class BotManage:
                     data.message, this.bot_username
                 ) or utils.is_channel(data):
                     return False
+
+                if all([
+                    not utils.is_private(data),
+                    this.config.whitelist.on,
+                    this.config.whitelist.chat != (
+                        data.chat.id
+                        if data.chat.id < 0
+                        else -1_000_000_000_000 + -data.chat.id
+                        )
+                    ]):  # fixme
+                    return await data.client.delete_dialog(data.chat)
 
                 if all([utils.is_private(data), anonymous]) or all(
                     [not utils.is_anon(data), anonymous]
@@ -119,7 +130,7 @@ Please do not use several opposite params (i.e., \
 
                 cd = cooldown
                 if not cd:
-                    cd = int(this.bot_config.get_limits("cd"))
+                    cd = int(this.config.get_limits("cd"))
 
                 if anonymous:
                     chat_limits: list = await this.chat_storage.get_chat_limits(chat_id)

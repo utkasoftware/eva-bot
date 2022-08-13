@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
+
 
 from httpx import AsyncClient, codes, TimeoutException
 
@@ -9,6 +8,7 @@ from eva.modules import logger
 
 
 class SpamwatchWrapper:
+    #@todo update me
 
     def __init__(this, token: str = Config().get_spamwatch_token()):
 

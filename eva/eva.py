@@ -263,10 +263,13 @@ async def join_requests_handler(event: Message) -> None:
     """
 
     chat_id = (
-        event.chat_id
-        if not str(event.chat_id).startswith("-100")
-        else int(str(event.chat_id)[4:])
+        event.chat.id
+        if event.chat.id < 0
+        else -1_000_000_000_000 + event.chat.id
     )
+
+    if config.whitelist.on and config.whitelist.chat != chat_id:
+        return await bot.delete_dialog(event.chat)
 
     log_channel_id = await chat_storage.get_log_channel(chat_id)
 
@@ -323,14 +326,18 @@ def start(optional_args):
     if optional_args.log_level != logger.DEFAULT_LEVEL:
         logger.setLevel(optional_args.log_level)
 
-    bot_token = config.get_bot_token()
-
     register_handlers()
 
-    bot.start(bot_token=bot_token)
+    bot.start(bot_token=config.bot.token)
     bot.parse_mode = "html"
 
-    logger.success("Starting for {}".format(bot_manage.bot_id))
-    logger.success("Admin ID: {}".format(config.get_owner_id()))
+    logger.success("Starting for {}".format(config.bot.id))
+    logger.success("Admin ID: {}".format(config.bot.admin))
+
+    if config.whitelist.on:
+        logger.info("Whitelist mode is enabled")
+        logger.info(
+            "I'll handle join requests only for {} chat_id".format(config.whitelist.chat)
+        )
 
     bot.run_until_disconnected()

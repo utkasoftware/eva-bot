@@ -1,17 +1,22 @@
 # -*- coding: utf-8 -*-
-#    Eva Telegram Bot (https://t.me/storoxbot)
-#    2020-2022
+
 
 from os import environ
-from typing import Union
+from typing import Union, NoReturn
+from string import capwords
 from urllib.parse import urlparse
+
 from configparser import ConfigParser
 
 from httpx import get as httpx_get
 
 from eva.structs import SqlConnectParams
 from eva.modules import Singleton
-from .errors import ConfigMissingError
+
+from .errors import (
+    ConfigMissingError,
+    InvalidTokenError
+)
 
 
 class Config(metaclass=Singleton):
@@ -20,27 +25,49 @@ class Config(metaclass=Singleton):
 
         this.postgresql_url = environ.get("DATABASE_URL")
         this.bot_token = environ.get("BOT_TOKEN")
-        this.config = ConfigParser()
-        this.config.read("config.ini")
-        if not this.config.has_section("bot") and not this.bot_token:
+        this._config = ConfigParser()
+        this._config.read("config.ini")
+
+        if not this._config.has_section("bot") and not this.bot_token:
             raise ConfigMissingError(
                 'Token not found: Missing "BOT_TOKEN" env var or "config.ini" file'
             )
 
-        if not this.config.has_section("database") and not this.postgresql_url:
+        if not this._config.has_section("database") and not this.postgresql_url:
             raise ConfigMissingError(
-                'Database params not found: \
-Missing "DATABASE_URL" env var or "config.ini" file'
+                (
+                    'Database params not found: '
+                    'Missing "DATABASE_URL" env var or "config.ini" file'
+                )
             )
+
+        for section in this._config.sections():
+            if hasattr(this, capwords(section)):
+                # We have a subclass with a custom implementation of section
+                this.__dict__[section] = getattr(
+                    this,
+                    capwords(section)
+                    )(
+                        dict(this._config.items(section))
+                    )
+                continue
+
+            this.__dict__[section] = BaseSection(
+                section,
+                dict(this._config.items(section))
+            )
+
+
 
     def get_connect_params(this) -> SqlConnectParams:
 
         if not this.postgresql_url:
-            dbname = this.config.get("database", "db")
-            dbuser = this.config.get("database", "user")
-            dbpass = this.config.get("database", "password")
-            dbhost = this.config.get("database", "host")
-            dbport = this.config.get("database", "port")
+
+            dbname = this.database.db
+            dbuser = this.database.user
+            dbpass = this.database.password
+            dbhost = this.database.host
+            dbport = this.database.port
         else:
             pg_url = urlparse(this.postgresql_url)
             dbname = pg_url.lstrip("/")
@@ -52,43 +79,106 @@ Missing "DATABASE_URL" env var or "config.ini" file'
         return SqlConnectParams(dbname, dbuser, dbpass, dbhost, dbport)
 
     def get_bot_token(this) -> str:
-        return this.config.get("bot", "token") if not this.bot_token else this.bot_token
+        return this.bot.token if not this.bot_token else this.bot.token
 
     def get_bot_username(this) -> str:
-        _api_response = httpx_get(
-            "https://api.telegram.org/bot{}/getMe".format(this.get_bot_token())
-        )
-        return _api_response.json().get("result").get("username")
-
-    def is_valid_token(this, token=str) -> bool:
-        _api_response = httpx_get("https://api.telegram.org/bot{}/getMe".format(token))
-        return _api_response.json().get("result").get("ok")
+        return this.bot.username
 
     def get_bot_id(this) -> int:
-        return int(this.get_bot_token().split(":")[0])
+        return this.bot.id
 
     def get_owner_id(this) -> int:
-        return this.config.getint("bot", "admin")
+        return this.bot.admin
 
-    def get_api_params(this) -> list[Union[int, str]]:
+    def get_api_params(this) -> list[int, str]:
 
-        _api_id: int = this.config.getint("api", "id")
-        _api_hash: str = this.config.get("api", "hash")
-        return [_api_id, _api_hash]
+        return [
+            int(this.api.id),
+            this.api.hash
+        ]
 
     def get_limits(this, key: str) -> str:
-        return this.config.get("limits", key)
+        return this._config.get("limits", key)
 
     def get_captcha_settings(this) -> list[int]:
 
-        length: int = this.config.getint("captcha", "lenght")
-        width: int = this.config.getint("captcha", "width")
-        height: int = this.config.getint("captcha", "height")
-
-        return [length, width, height]
+        return [
+            int(this.captcha.lenght),
+            int(this.captcha.width),
+            int(this.captcha.height)
+        ]
 
     def get_spamwatch_token(this) -> str:
-        return this.config.get("spamwatch", "token")
+        return this.spamwatch.token
 
     def get_default_language(this) -> str:
-        return this.config.get("languages", "default")
+        return this.languages.default
+
+
+    class Bot:
+
+        def __init__(this, section: dict) -> None:
+            this.section = section
+            this._me = None
+            this.validate_token(this.token)
+
+
+        @property
+        def admin(this) -> int:
+            return int(
+                this.section.get("admin")
+            )
+
+        @property
+        def token(this) -> str:
+            return this.section.get("token")
+
+        # INI end
+
+        @property
+        def id(this) -> int:
+            return int(
+                this.section.get("token").split(":")[0]
+            )
+
+        @property
+        def username(this) -> str:
+            return this._me.get("username")
+
+        def validate_token(this, token: str) -> None | NoReturn:
+            resp = httpx_get("https://api.telegram.org/bot{}/getMe".format(token))
+            if resp.json().get("ok"):
+                this._me = resp.json().get("result")
+                return
+
+            raise InvalidTokenError(token, resp.text)
+
+
+    class Whitelist:
+
+        def __init__(this, section: dict) -> None:
+            this.section = section
+
+        @property
+        def on(this) -> bool:
+            return str(this.section.get("on")).lower() \
+            in ["true", "1", "on", "yes", "y"]
+
+        @property
+        def chat(this) -> int:
+            return int(
+                this.section.get("chat")
+            )
+
+
+class BaseSection:
+
+    def __init__(this,
+        section_name: str,
+        section_data: dict
+        ) -> None:
+
+        for key, value in section_data.items():
+            this.__dict__[key] = value
+
+
