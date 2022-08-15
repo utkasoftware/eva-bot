@@ -57,12 +57,16 @@ class Config(metaclass=Singleton):
                 dict(this._config.items(section))
             )
 
+    # def __contains__(this, section: object) -> bool:
+    #     return section in this.__dict__.keys()
 
+    @property
+    def sections(this) -> list[str]:
+        return this._config.sections()
 
     def get_connect_params(this) -> SqlConnectParams:
 
         if not this.postgresql_url:
-
             dbname = this.database.db
             dbuser = this.database.user
             dbpass = this.database.password

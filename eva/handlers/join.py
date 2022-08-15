@@ -56,7 +56,7 @@ async def join__cmd(event):
                 please_wait,
                 local.error_im_kicked
             )
-            await captcha_storage.delete_all_from_chat(chat_id=pending_chat_id)
+            await captcha_storage.delete_all_captcha_for(chat_id=pending_chat_id)
             return
         chat_title = pending_chat_info.chats[0].title
 
@@ -110,7 +110,7 @@ async def join__cmd(event):
             ]
         )
 
-    await event.cliet.delete_messages(
+    await event.client.delete_messages(
         event.chat,
         message_ids=please_wait
     )
