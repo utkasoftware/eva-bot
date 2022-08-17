@@ -10,6 +10,7 @@ from .storages import UserStorage
 from .storages import ChatStorage
 from .errors import LimiterArgsConflict
 from ..structs import States
+from ..modules.fsm import StateMachine
 from ..modules import logger
 from .. import utils
 
@@ -210,23 +211,27 @@ class UserState:
     def __init__(this) -> None:
 
         this.user_storage = UserStorage()
+        this.fsm = StateMachine(__package__, States)
         this.states = States
 
     async def __get_state(this, events) -> int:
 
         user_id = events[0].sender.id
-        user_state: int = await this.user_storage.get_user_state(user_id)
-        return user_state
+        # user_state: int = await this.user_storage.get_user_state(user_id)
+        user_state: int = await this.fsm.get(user_id)
+        return user_state.value
 
     async def update(this, user_id: int, new_state: States) -> None:
 
-        value = new_state.value
-        await this.user_storage.set_user_state(user_id, state_id=value)
+        # value = new_state.value
+        # await this.user_storage.set_user_state(user_id, state_id=value)
+        await this.fsm.set(user_id, new_state)
 
     async def get(this, user_id: int) -> int:
 
-        user_state: int = await this.user_storage.get_user_state(user_id)
-        return user_state
+        # user_state: int = await this.user_storage.get_user_state(user_id)
+        user_state: int = await this.fsm.get(user_id)
+        return user_state.value
 
     def ANY_NOT_IDLE(this, event_func: Callable) -> Callable:
         async def wrapper(*events, **kwargs) -> None:

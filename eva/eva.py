@@ -33,6 +33,8 @@ from . import (
     User
 )
 
+from .modules.fsm import StateMachineSyncer
+
 from . import handlers
 
 
@@ -327,6 +329,15 @@ def start(optional_args):
         logger.setLevel(optional_args.log_level)
 
     register_handlers()
+
+    syncer = StateMachineSyncer(
+        loop=bot.loop,
+        fsm=usc.fsm,
+        updater=user_storage.set_user_state,
+        interval=120,  # sec
+        on_error=print
+    )
+    syncer.run()
 
     bot.start(bot_token=config.bot.token)
     bot.parse_mode = "html"
