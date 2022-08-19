@@ -267,7 +267,7 @@ async def join_requests_handler(event: Message) -> None:
     chat_id = (
         event.chat.id
         if event.chat.id < 0
-        else -1_000_000_000_000 + event.chat.id
+        else -1_000_000_000_000 + -event.chat.id
     )
 
     if config.whitelist.on and config.whitelist.chat != chat_id:
