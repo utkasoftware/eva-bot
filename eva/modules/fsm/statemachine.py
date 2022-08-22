@@ -56,16 +56,16 @@ class StateMachine:
     async def get(this, user_id: UserId) -> IntEnum:
         return this._states_memory.state_of(user_id)
 
-    async def exists(this, user_id: int) -> bool:
+    async def exists(this, user_id: UserId) -> bool:
         for key in this._states_memory.keys:
             if user_id == key:
                 return True
         return False
 
-    async def delete(this, user_id: int) -> None:
+    async def delete(this, user_id: UserId) -> None:
         this._states_memory.delete(user_id)
 
-    async def get_keys(this) -> list[int]:
+    async def get_keys(this) -> list[UserId]:
         return [k for k in this._states_memory.keys]
 
     async def iter_keys(this) -> Iterable:
@@ -92,7 +92,7 @@ class StateMachine:
             this._deleted_cache_limit = 100  # Needs for bulk deleting from dict
             this.Lock = partial(this.LockedMemory, this)
 
-        def add(this, user_id: int, state: IntEnum) -> None | NoReturn:
+        def add(this, user_id: StateMachine.UserId, state: IntEnum) -> None | NoReturn:
             if this._locked:
                 raise this.MemoryIsLocked(this.name)
 
@@ -102,18 +102,16 @@ class StateMachine:
         def keys(this) -> Iterable:
             yield from this._memory.keys()
 
-        def delete(this, user_id: int) -> None:
+        def delete(this, user_id: StateMachine.UserId) -> None:
             this.__delete(user_id)
 
-        def state_of(this, user_id: int) -> IntEnum | None:
+        def state_of(this, user_id: StateMachine.UserId) -> IntEnum:
             state = this._memory.get(user_id)
-            if state is None:
-                return this._states(0)
             if user_id in this._deleted:
                 return this._states(-1)
             return this._states(state)
 
-        def _safe_add(this, user_id: int, state: IntEnum) -> None:
+        def _safe_add(this, user_id: StateMachine.UserId, state: IntEnum) -> None:
             this.__remove_from_deleted(user_id)
             this._memory[user_id] = state.value
 
@@ -123,7 +121,7 @@ class StateMachine:
         def _unlock(this) -> None:
             this._locked = False
 
-        def __remove_from_deleted(this, user_id: int) -> None:
+        def __remove_from_deleted(this, user_id: StateMachine.UserId) -> None:
             try:
                 this._deleted = list(
                     set(this._deleted)
@@ -133,7 +131,7 @@ class StateMachine:
             except ValueError:
                 pass  #  id doesn't exist, just continue
 
-        def __delete(this, user_id: int) -> None:
+        def __delete(this, user_id: StateMachine.UserId) -> None:
             if len(this._deleted) < this._deleted_cache_limit:
                 this._deleted.append(user_id)
             else:
