@@ -38,7 +38,7 @@ user_storage = UserStorage()
 chat_storage = ChatStorage()
 captcha_storage = CaptchaStorage()
 
-local = Language.load(config.get_default_language())
+local = Language.loadv2(config.get_default_language())
 
 captcha_wrapper = CaptchaWrapper()
 
