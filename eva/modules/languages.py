@@ -51,8 +51,11 @@ class Language:
 
         return make_dataclass(
             "local_{}".format(lang_name),
-            _fields
-        )
+            _fields,
+            namespace={
+                "_name": lambda this: this.__class__.__name__
+            }
+        )()
 
     @staticmethod
     def load(language_name: str | None = None) -> "Language" | NoReturn:
