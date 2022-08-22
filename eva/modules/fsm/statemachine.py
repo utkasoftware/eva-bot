@@ -3,12 +3,33 @@ from asyncio import AbstractEventLoop
 from asyncio import get_event_loop
 from enum import EnumMeta, IntEnum
 from functools import partial, wraps
-from typing import Any, Awaitable, Callable, Iterable, NoReturn
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Iterable,
+    NewType,
+    NoReturn
+)
 
 
 class StateMachine:
 
-    def __init__(this, name: str, states: EnumMeta) -> None:
+    StateId = NewType("States.STATE.value", int)
+    UserId  = NewType("UserId", int)
+
+    def __init__(this,
+        name: str,
+        states: EnumMeta,
+        cold_cache: list[list[UserId, StateId]] | None=None
+        ) -> None:
+
+        """
+        name: The name for the current state machine. Required for exceptions logging.
+        states: Instance of AbstractEnumMeta. The class itself should preferably inherit IntEnum and contain only int states.
+        cold_cache: Cold cache from persistent database. Recommended for the correctness of the states after restarting the bot.
+
+        """
 
         if not isinstance(states, EnumMeta):
             raise TypeError(
@@ -20,17 +41,19 @@ class StateMachine:
 
         this.name = name
         this.states = states
+
         setattr(this.states, "_list", dict(
             this.states.__members__.items())
         )
 
         this._states_memory = this.Memory(name, this.states)
+        if cold_cache: this.load_cc(cold_cache)
         this.Lock = this._states_memory.Lock
 
-    async def set(this, user_id: int, state: IntEnum) -> None:
+    async def set(this, user_id: UserId, state: IntEnum) -> None:
         this._states_memory.add(user_id, state)
 
-    async def get(this, user_id: int) -> IntEnum | None:
+    async def get(this, user_id: UserId) -> IntEnum:
         return this._states_memory.state_of(user_id)
 
     async def exists(this, user_id: int) -> bool:
@@ -47,6 +70,13 @@ class StateMachine:
 
     async def iter_keys(this) -> Iterable:
         return this._states_memory.keys
+
+    def load_cc(this, cache: list[list[UserId, StateId]]) -> None:
+        for user in cache:
+            this._states_memory.add(
+                user[0],               # id
+                this.states(user[1])   # state
+            )
 
     @property
     def locked(this) -> bool:

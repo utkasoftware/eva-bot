@@ -211,7 +211,10 @@ class UserState:
     def __init__(this) -> None:
 
         this.user_storage = UserStorage()
-        this.fsm = StateMachine(__package__, States)
+        this.fsm = StateMachine(
+            __package__, States,
+            cold_cache=this.user_storage.get_all_states()
+        )
         this.states = States
 
     async def __get_state(this, events) -> int:

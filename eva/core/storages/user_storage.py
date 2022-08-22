@@ -194,7 +194,6 @@ class UserStorage(Storage):
         return User(*row)
 
     async def get_users_count(this) -> int:
-        """Возвращает целое число"""
 
         cur = this.con.cursor()
         cur.execute("""SELECT COUNT(DISTINCT user_id) FROM users_stats""")
@@ -202,7 +201,6 @@ class UserStorage(Storage):
         return count
 
     async def get_all_ids(this) -> list[int]:
-        """Возвращает список с целыми числами"""
 
         cur = this.con.cursor()
         cur.execute(
@@ -210,6 +208,15 @@ class UserStorage(Storage):
         rows = cur.fetchall()
         users = [user[0] for user in rows]
         return users
+
+    def get_all_states(this) -> list[list[int, int]]:
+
+        cur = this.con.cursor()
+        cur.execute(
+            """SELECT user_id, state FROM users_stats""")
+        rows = cur.fetchall()
+        states = [list(state) for state in rows]
+        return states
 
     async def set_user_state(this, user_id: int, state_id: int) -> None:
         """Устанавливаем состояние пользователя."""
