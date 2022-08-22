@@ -32,14 +32,14 @@ async def massmail__cmd(event):
         return
 
     WAIT_SEC = 1.5
-    users = user_storage.get_all_ids()
+    users = await user_storage.get_all_ids()
     wait_please_msg = await event.respond(
         local.massmail.format(len(users), (len(users) * WAIT_SEC) / 60))
     success = errors = floodwaits = 0
     for user in users:
         logger.notice(local.massmail_sending.format(user))
         try:
-            await event.client.bot.send_message(
+            await event.client.send_message(
                 user,
                 mail_text,
                 link_preview=False
