@@ -16,6 +16,9 @@ parser.add_argument(
     default="INFO", dest="log_level",
     required=False
 )
+parser.add_argument(
+    "--interact", help="Load python pdb interactive debugger", action="store_true"
+)
 
 
 # parser.add_argument("-t", "--token", help="Bot token", dest="token", required=False)

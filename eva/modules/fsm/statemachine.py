@@ -5,29 +5,35 @@ from enum import EnumMeta, IntEnum
 from functools import partial, wraps
 from typing import (
     Any,
-    Awaitable,
     Callable,
+    Coroutine,
     Iterable,
     NewType,
-    NoReturn
+    NoReturn,
+    Union
 )
 
 
 class StateMachine:
 
-    StateId = NewType("States.STATE.value", int)
+    State = NewType("State", IntEnum)
+    StateId = NewType("StateId", int)
     UserId  = NewType("UserId", int)
 
     def __init__(this,
         name: str,
         states: EnumMeta,
-        cold_cache: list[list[UserId, StateId]] | None=None
+        cold_cache: list[
+            list[Union[UserId, StateId]]
+        ] | None=None
         ) -> None:
 
         """
         name: The name for the current state machine. Required for exceptions logging.
-        states: Instance of AbstractEnumMeta. The class itself should preferably inherit IntEnum and contain only int states.
-        cold_cache: Cold cache from persistent database. Recommended for the correctness of the states after restarting the bot.
+        states: Instance of AbstractEnumMeta.
+            The class itself should preferably inherit IntEnum and contain only int states.
+        cold_cache: Cold cache from persistent database.
+            Recommended for the correctness of the states after restarting the bot.
 
         """
 
@@ -50,10 +56,10 @@ class StateMachine:
         if cold_cache: this.load_cc(cold_cache)
         this.Lock = this._states_memory.Lock
 
-    async def set(this, user_id: UserId, state: IntEnum) -> None:
+    async def set(this, user_id: UserId, state: State) -> None:
         this._states_memory.add(user_id, state)
 
-    async def get(this, user_id: UserId) -> IntEnum:
+    async def get(this, user_id: UserId) -> State:
         return this._states_memory.state_of(user_id)
 
     async def exists(this, user_id: UserId) -> bool:
@@ -71,7 +77,7 @@ class StateMachine:
     async def iter_keys(this) -> Iterable:
         return this._states_memory.keys
 
-    def load_cc(this, cache: list[list[UserId, StateId]]) -> None:
+    def load_cc(this, cache: list[list[Union[UserId, StateId]]]) -> None:
         for user in cache:
             this._states_memory.add(
                 user[0],               # id
@@ -82,17 +88,21 @@ class StateMachine:
     def locked(this) -> bool:
         return this._states_memory._locked
 
+
     class Memory:
+
         def __init__(this, name: str, states: EnumMeta) -> None:
             this.name = name
             this._states = states
             this._locked = False
-            this._memory: dict[int, int] = dict()
-            this._deleted: list[int] = list()
-            this._deleted_cache_limit = 100  # Needs for bulk deleting from dict
+            this._memory: dict[StateMachine.UserId, StateMachine.StateId] = dict()
             this.Lock = partial(this.LockedMemory, this)
 
-        def add(this, user_id: StateMachine.UserId, state: IntEnum) -> None | NoReturn:
+        def add(this,
+            user_id: StateMachine.UserId,
+            state: StateMachine.State
+            ) -> None | NoReturn:
+
             if this._locked:
                 raise this.MemoryIsLocked(this.name)
 
@@ -102,17 +112,19 @@ class StateMachine:
         def keys(this) -> Iterable:
             yield from this._memory.keys()
 
-        def delete(this, user_id: StateMachine.UserId) -> None:
-            this.__delete(user_id)
-
-        def state_of(this, user_id: StateMachine.UserId) -> IntEnum:
+        def state_of(this, user_id: StateMachine.UserId) -> StateMachine.State:
             state = this._memory.get(user_id)
-            if user_id in this._deleted:
-                return this._states(-1)
+            if state is None:
+                # assume that zero is always used for the initial(default) state
+                return this._states(0)
+
             return this._states(state)
 
-        def _safe_add(this, user_id: StateMachine.UserId, state: IntEnum) -> None:
-            this.__remove_from_deleted(user_id)
+        def _safe_add(this,
+            user_id: StateMachine.UserId,
+            state: StateMachine.State
+            ) -> None:
+
             this._memory[user_id] = state.value
 
         def _lock(this) -> None:
@@ -121,32 +133,15 @@ class StateMachine:
         def _unlock(this) -> None:
             this._locked = False
 
-        def __remove_from_deleted(this, user_id: StateMachine.UserId) -> None:
-            try:
-                this._deleted = list(
-                    set(this._deleted)
-                )
-                this._deleted.remove(user_id)
-
-            except ValueError:
-                pass  #  id doesn't exist, just continue
-
-        def __delete(this, user_id: StateMachine.UserId) -> None:
-            if len(this._deleted) < this._deleted_cache_limit:
-                this._deleted.append(user_id)
-            else:
-                for deleted_elem in this._deleted:
-                    this._memory.pop(deleted_elem, None)
-                this._deleted = [user_id]
 
         class LockedMemory:
 
             __slots__ = [
                 "set", "get", "delete", "keys",
-                "__lock", "__unlock" #, "__wrap_acontext__"
+                "__lock", "__unlock"
             ]
 
-            def __init__(this, parent: "StateMachine.Memory") -> None:
+            def __init__(this, parent: StateMachine.Memory) -> None:
                 this.set = parent._safe_add
                 this.get = parent.state_of
                 this.delete = parent.delete
@@ -154,14 +149,14 @@ class StateMachine:
                 this.__lock = parent._lock
                 this.__unlock = parent._unlock
 
-            def __enter__(this) -> "StateMachine.Memory.LockedMemory":
+            def __enter__(this) -> StateMachine.Memory.LockedMemory:
                 this.__lock()
                 return this
 
             def __exit__(this, extype, exval, extraceb) -> None:
                 this.__unlock()
 
-            async def __aenter__(this) -> "StateMachine.Memory.LockedMemory":
+            async def __aenter__(this) -> StateMachine.Memory.LockedMemory:
                 this.__lock()
 
                 this.set = this.__wrap_acontext__(this.set)
@@ -175,7 +170,7 @@ class StateMachine:
 
             def __wrap_acontext__(this,
                 _slot: Callable
-                ) -> Callable[..., Awaitable]:
+                ) -> Callable[..., Coroutine]:
                 @wraps(_slot)
                 async def _aslot(this,
                     *args,

@@ -7,7 +7,7 @@ class StateMachineSyncer:
 
     """
     State Synchronizer from in-memory dict to DB.
-    
+
     """
 
 
@@ -15,7 +15,7 @@ class StateMachineSyncer:
         loop: AbstractEventLoop,
         fsm: "StateMachine",
         updater: StateMachineSyncer.StateUpdater,
-        interval: int,  # seconds,
+        interval: int,  # seconds
         on_error: StateMachineSyncer.OnError
     ) -> None:
 
@@ -33,16 +33,13 @@ class StateMachineSyncer:
         this.__syncing = False
 
     async def _syncer(this) -> Any:
-        # print("started _syncer")
+
         for key in await this.__fsm.iter_keys():
             state = await this.__fsm.get(key)
             await this.__updater(
                 key,
                 state.value
             )
-            #print("updated state for {} -> {}".format(
-            #    str(key), str(state)
-            #))
 
     async def _run_syncer_task(this) -> None:
         while this.__syncing:
@@ -52,15 +49,15 @@ class StateMachineSyncer:
                 )
 
             try:
+                await asleep(this.__interval)  # сначала спим, чтобы не обновлять только что полученный кеш
                 await this._syncer()
             except Exception as syncerex:
                 this.__on_error(
                     this.__fsm.name,
                     syncerex
                 )
-            await asleep(this.__interval)
 
-    
+
     class OnError(Protocol):
         def __call__(this, memory_name: str, ex_trace: Exception
         ) -> None:
@@ -74,6 +71,4 @@ class StateMachineSyncer:
         async def __call__(this, state_for: int, state: int) -> None:
             """
             Database class state_update method protocol
-            
             """
- 

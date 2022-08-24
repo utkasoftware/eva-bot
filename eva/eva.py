@@ -351,4 +351,8 @@ def start(optional_args):
             "I'll handle join requests only for {} chat_id".format(config.whitelist.chat)
         )
 
+    if optional_args.interact:
+        import pdb
+        pdb.set_trace()
+
     bot.run_until_disconnected()
